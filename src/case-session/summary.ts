@@ -3,61 +3,93 @@ import {
   COMPLAINT_TYPES,
   getBodyRegion,
 } from "../catalog/chief-complaint-1.js";
+import { QUALITY_OPTIONS } from "../catalog/chief-complaint-quality.js";
 import {
-  QUALITY_OPTIONS,
   formatApproxDuration,
   getTimeBucket,
-} from "../catalog/chief-complaint-2.js";
+} from "../catalog/chief-complaint-duration.js";
 import { getHistoryCatalog, type HistoryStepId } from "../catalog/history-block.js";
+import { type BilingualText } from "../catalog/labels.js";
 import { getAccompanyingSymptom } from "../catalog/other-symptoms.js";
-import { getChiefComplaint1Detail } from "./chief-complaint-1.js";
-import { getChiefComplaint2Detail } from "./chief-complaint-2.js";
-import { getOtherSymptomsDetail } from "./other-symptoms.js";
+import { SUMMARY_COPY } from "../catalog/summary-copy.js";
+import { UI_COPY } from "../catalog/ui-copy.js";
+import { INFORMANT_OPTIONS } from "../content/start-labels.js";
 import { DISCLAIMER_ZH } from "../content/disclaimer.js";
+import { getChiefComplaint1Detail } from "./chief-complaint-1.js";
+import { getChiefComplaintQualityDetail } from "./chief-complaint-quality.js";
+import { getChiefComplaintDurationDetail } from "./chief-complaint-duration.js";
+import { getOtherSymptomsDetail } from "./other-symptoms.js";
 import {
   type CaseState,
   type Informant,
   type InterviewStep,
+  type SecondLanguage,
   emptyStepAnswer,
 } from "./types.js";
 
+export type SummaryLine = { zh: string; other: string };
+
 export type SummarySection = {
   key: string;
-  label: string;
-  value: string;
+  label: SummaryLine;
+  value: SummaryLine;
   /** false when unknown / skipped / empty */
   obtained: boolean;
   editStep: InterviewStep;
 };
 
-const INFORMANT_ZH: Record<Informant, string> = {
-  self: "本人",
-  family: "家屬",
-  friend: "有人",
-  other: "其他",
-};
+type Lang = "zh" | SecondLanguage;
 
-function statusLabel(
+function pick(text: BilingualText, lang: Lang): string {
+  return lang === "zh" ? text.zh : text[lang];
+}
+
+function line(text: BilingualText, lang: SecondLanguage): SummaryLine {
+  return { zh: text.zh, other: pick(text, lang) };
+}
+
+function joinIds(
+  ids: string[],
+  lang: Lang,
+  lookup: (id: string) => string | undefined,
+): string {
+  const sep = lang === "zh" || lang === "ja" ? "、" : ", ";
+  return ids
+    .map((id) => lookup(id) ?? id)
+    .filter(Boolean)
+    .join(sep);
+}
+
+function statusLine(
   status: string | undefined,
-): { obtained: boolean; value: string } | null {
-  if (status === "unknown") return { obtained: false, value: "未取得（不知道）" };
-  if (status === "skipped") return { obtained: false, value: "未取得（跳過）" };
+  lang: SecondLanguage,
+): { obtained: boolean; value: SummaryLine } | null {
+  if (status === "unknown") {
+    return {
+      obtained: false,
+      value: line(SUMMARY_COPY.notObtainedUnknown, lang),
+    };
+  }
+  if (status === "skipped") {
+    return {
+      obtained: false,
+      value: line(SUMMARY_COPY.notObtainedSkipped, lang),
+    };
+  }
   if (!status || status === "empty") {
-    return { obtained: false, value: "未取得" };
+    return { obtained: false, value: line(SUMMARY_COPY.notObtained, lang) };
   }
   return null;
 }
 
-function joinZh(ids: string[], lookup: (id: string) => string | undefined): string {
-  return ids
-    .map((id) => lookup(id) ?? id)
-    .filter(Boolean)
-    .join("、");
+function informantName(id: Informant, lang: Lang): string {
+  const opt = INFORMANT_OPTIONS.find((o) => o.id === id);
+  return opt ? pick(opt.labels, lang) : id;
 }
 
 function chiefComplaintEditStep(state: CaseState): InterviewStep {
   const a1 = state.answers.chief_complaint_1;
-  const a2 = state.answers.chief_complaint_2;
+  const a2 = state.answers.chief_complaint_quality;
   const aDur = state.answers.chief_complaint_duration;
   const incomplete = (status: string | undefined) =>
     !status || status === "empty";
@@ -70,7 +102,7 @@ function chiefComplaintEditStep(state: CaseState): InterviewStep {
     a2?.status !== "unknown" &&
     a2?.status !== "skipped"
   ) {
-    return "chief_complaint_2";
+    return "chief_complaint_quality";
   }
   if (
     incomplete(aDur?.status) &&
@@ -79,21 +111,109 @@ function chiefComplaintEditStep(state: CaseState): InterviewStep {
   ) {
     return "chief_complaint_duration";
   }
-  // All answered: jump to quality (middle) for typical refine; where/what via nav.
-  if (a2?.status === "answered") return "chief_complaint_2";
+  if (a2?.status === "answered") return "chief_complaint_quality";
   if (aDur?.status === "answered") return "chief_complaint_duration";
   return "chief_complaint_1";
 }
 
-function formatChiefComplaint(state: CaseState): SummarySection {
+function formatChiefParts(state: CaseState, lang: Lang): string[] {
+  const a2 = state.answers.chief_complaint_quality;
+  const aDur = state.answers.chief_complaint_duration;
+  const d1 = getChiefComplaint1Detail(state);
+  const dq = getChiefComplaintQualityDetail(state);
+  const dDur = getChiefComplaintDurationDetail(state);
+  const parts: string[] = [];
+
+  if (d1.complaintTypeIds.length) {
+    parts.push(
+      joinIds(
+        d1.complaintTypeIds,
+        lang,
+        (id) => {
+          const labels = COMPLAINT_TYPES.find((c) => c.id === id)?.labels;
+          return labels ? pick(labels, lang) : undefined;
+        },
+      ),
+    );
+  }
+  if (d1.bodyRegionIds.length) {
+    const regions = joinIds(d1.bodyRegionIds, lang, (id) => {
+      const labels = BODY_REGIONS.find((r) => r.id === id)?.labels;
+      return labels ? pick(labels, lang) : undefined;
+    });
+    const subs = d1.bodySubregionIds.length
+      ? `（${joinIds(d1.bodySubregionIds, lang, (id) => {
+          for (const r of BODY_REGIONS) {
+            const sub = r.subregions.find((s) => s.id === id);
+            if (sub) return pick(sub.labels, lang);
+          }
+          return undefined;
+        })}）`
+      : "";
+    parts.push(`${pick(SUMMARY_COPY.body, lang)}：${regions}${subs}`);
+  }
+  if (dq.qualityIds.length) {
+    parts.push(
+      `${pick(SUMMARY_COPY.quality, lang)}：${joinIds(
+        dq.qualityIds,
+        lang,
+        (id) => {
+          const labels = QUALITY_OPTIONS.find((q) => q.id === id)?.labels;
+          return labels ? pick(labels, lang) : undefined;
+        },
+      )}`,
+    );
+  } else if (a2?.status === "unknown" || a2?.status === "skipped") {
+    const st =
+      a2.status === "unknown"
+        ? pick(SUMMARY_COPY.notObtainedUnknown, lang)
+        : pick(SUMMARY_COPY.notObtainedSkipped, lang);
+    parts.push(`${pick(SUMMARY_COPY.quality, lang)}：${st}`);
+  }
+  {
+    const durationText =
+      dDur.timeAmount !== null &&
+      dDur.timeAmount > 0 &&
+      dDur.timeUnit !== null
+        ? formatApproxDuration(dDur.timeAmount, dDur.timeUnit, lang)
+        : dDur.timeBucketId
+          ? (() => {
+              const labels = getTimeBucket(dDur.timeBucketId)?.labels;
+              return labels ? pick(labels, lang) : dDur.timeBucketId;
+            })()
+          : "";
+    if (durationText) {
+      const refine = dDur.timeRefine.trim()
+        ? `；${pick(SUMMARY_COPY.refine, lang)}：${dDur.timeRefine.trim()}`
+        : "";
+      parts.push(`${pick(SUMMARY_COPY.time, lang)}：${durationText}${refine}`);
+    } else if (aDur?.status === "unknown" || aDur?.status === "skipped") {
+      const st =
+        aDur.status === "unknown"
+          ? pick(SUMMARY_COPY.notObtainedUnknown, lang)
+          : pick(SUMMARY_COPY.notObtainedSkipped, lang);
+      parts.push(`${pick(SUMMARY_COPY.time, lang)}：${st}`);
+    } else if (dDur.timeRefine.trim()) {
+      parts.push(
+        `${pick(SUMMARY_COPY.time, lang)}：${pick(SUMMARY_COPY.refine, lang)}：${dDur.timeRefine.trim()}`,
+      );
+    }
+  }
+  if (dq.painScore !== null) {
+    parts.push(`${pick(SUMMARY_COPY.pain, lang)}：${dq.painScore}/10`);
+  }
+  return parts;
+}
+
+function formatChiefComplaint(
+  state: CaseState,
+  lang: SecondLanguage,
+): SummarySection {
   const editStep = chiefComplaintEditStep(state);
   const a1 = state.answers.chief_complaint_1;
-  const a2 = state.answers.chief_complaint_2;
+  const a2 = state.answers.chief_complaint_quality;
   const aDur = state.answers.chief_complaint_duration;
-  const blocked =
-    statusLabel(a1?.status) ??
-    statusLabel(a2?.status) ??
-    statusLabel(aDur?.status);
+  const label = line(SUMMARY_COPY.chief, lang);
 
   if (
     (a1?.status === "unknown" || a1?.status === "skipped") &&
@@ -106,82 +226,27 @@ function formatChiefComplaint(state: CaseState): SummarySection {
       !aDur ||
       aDur.status === "empty")
   ) {
+    const st = statusLine(a1?.status, lang);
     return {
       key: "chief",
-      label: "主訴",
-      value: statusLabel(a1?.status)?.value ?? "未取得",
+      label,
+      value: st?.value ?? line(SUMMARY_COPY.notObtained, lang),
       obtained: false,
       editStep,
     };
   }
 
-  const d1 = getChiefComplaint1Detail(state);
-  const d2 = getChiefComplaint2Detail(state);
-  const parts: string[] = [];
-
-  if (d1.complaintTypeIds.length) {
-    parts.push(
-      joinZh(
-        d1.complaintTypeIds,
-        (id) => COMPLAINT_TYPES.find((c) => c.id === id)?.labels.zh,
-      ),
-    );
-  }
-  if (d1.bodyRegionIds.length) {
-    const regions = joinZh(
-      d1.bodyRegionIds,
-      (id) => BODY_REGIONS.find((r) => r.id === id)?.labels.zh,
-    );
-    const subs = d1.bodySubregionIds.length
-      ? `（${joinZh(d1.bodySubregionIds, (id) => {
-          for (const r of BODY_REGIONS) {
-            const sub = r.subregions.find((s) => s.id === id);
-            if (sub) return sub.labels.zh;
-          }
-          return undefined;
-        })}）`
-      : "";
-    parts.push(`部位：${regions}${subs}`);
-  }
-  if (d2.qualityIds.length) {
-    parts.push(
-      `性質：${joinZh(
-        d2.qualityIds,
-        (id) => QUALITY_OPTIONS.find((q) => q.id === id)?.labels.zh,
-      )}`,
-    );
-  } else if (a2?.status === "unknown" || a2?.status === "skipped") {
-    parts.push(`性質：${statusLabel(a2.status)?.value}`);
-  }
-  {
-    const durationZh =
-      d2.timeAmount !== null &&
-      d2.timeAmount > 0 &&
-      d2.timeUnit !== null
-        ? formatApproxDuration(d2.timeAmount, d2.timeUnit, "zh")
-        : d2.timeBucketId
-          ? (getTimeBucket(d2.timeBucketId)?.labels.zh ?? d2.timeBucketId)
-          : "";
-    if (durationZh) {
-      const refine = d2.timeRefine.trim()
-        ? `；細調：${d2.timeRefine.trim()}`
-        : "";
-      parts.push(`時間：${durationZh}${refine}`);
-    } else if (aDur?.status === "unknown" || aDur?.status === "skipped") {
-      parts.push(`時間：${statusLabel(aDur.status)?.value}`);
-    } else if (d2.timeRefine.trim()) {
-      parts.push(`時間：細調：${d2.timeRefine.trim()}`);
-    }
-  }
-  if (d2.painScore !== null) {
-    parts.push(`痛尺：${d2.painScore}/10`);
-  }
-
-  if (parts.length === 0) {
+  const zhParts = formatChiefParts(state, "zh");
+  const otherParts = formatChiefParts(state, lang);
+  if (zhParts.length === 0) {
+    const blocked =
+      statusLine(a1?.status, lang) ??
+      statusLine(a2?.status, lang) ??
+      statusLine(aDur?.status, lang);
     return {
       key: "chief",
-      label: "主訴",
-      value: blocked?.value ?? "未取得",
+      label,
+      value: blocked?.value ?? line(SUMMARY_COPY.notObtained, lang),
       obtained: false,
       editStep,
     };
@@ -189,8 +254,8 @@ function formatChiefComplaint(state: CaseState): SummarySection {
 
   return {
     key: "chief",
-    label: "主訴",
-    value: parts.join("；"),
+    label,
+    value: { zh: zhParts.join("；"), other: otherParts.join("；") },
     obtained: true,
     editStep,
   };
@@ -199,10 +264,14 @@ function formatChiefComplaint(state: CaseState): SummarySection {
 function formatHistoryStep(
   state: CaseState,
   step: HistoryStepId,
-  label: string,
+  lang: SecondLanguage,
 ): SummarySection {
+  const catalog = getHistoryCatalog(step);
+  const label = catalog
+    ? line(catalog.title, lang)
+    : { zh: step, other: step };
   const answer = state.answers[step] ?? emptyStepAnswer();
-  const blocked = statusLabel(answer.status);
+  const blocked = statusLine(answer.status, lang);
   if (blocked && answer.optionIds.length === 0) {
     return {
       key: step,
@@ -213,20 +282,33 @@ function formatHistoryStep(
     };
   }
 
-  const catalog = getHistoryCatalog(step);
-  const names = joinZh(answer.optionIds, (id) => {
-    const opt = catalog?.options.find((o) => o.id === id);
-    if (!opt) return undefined;
-    if (opt.group === "yesterday") return `昨天${opt.labels.zh}`;
-    if (opt.group === "today") return `今天${opt.labels.zh}`;
-    return opt.labels.zh;
-  });
-  const note = answer.note.trim() ? `（備註：${answer.note.trim()}）` : "";
-  if (!names && !note) {
+  const namesFor = (L: Lang) =>
+    joinIds(answer.optionIds, L, (id) => {
+      const opt = catalog?.options.find((o) => o.id === id);
+      if (!opt) return undefined;
+      const name = pick(opt.labels, L);
+      if (opt.group === "yesterday") {
+        return `${pick(UI_COPY.intakeYesterday, L)}${name}`;
+      }
+      if (opt.group === "today") {
+        return `${pick(UI_COPY.intakeToday, L)}${name}`;
+      }
+      return name;
+    });
+
+  const noteZh = answer.note.trim()
+    ? `（${SUMMARY_COPY.note.zh}：${answer.note.trim()}）`
+    : "";
+  const noteOther = answer.note.trim()
+    ? `（${pick(SUMMARY_COPY.note, lang)}：${answer.note.trim()}）`
+    : "";
+  const namesZh = namesFor("zh");
+  const namesOther = namesFor(lang);
+  if (!namesZh && !noteZh) {
     return {
       key: step,
       label,
-      value: "未取得",
+      value: line(SUMMARY_COPY.notObtained, lang),
       obtained: false,
       editStep: step,
     };
@@ -234,16 +316,23 @@ function formatHistoryStep(
   return {
     key: step,
     label,
-    value: `${names}${note}`,
+    value: {
+      zh: `${namesZh}${noteZh}`,
+      other: `${namesOther}${noteOther}`,
+    },
     obtained: true,
     editStep: step,
   };
 }
 
-function formatOtherSymptoms(state: CaseState): SummarySection {
+function formatOtherSymptoms(
+  state: CaseState,
+  lang: SecondLanguage,
+): SummarySection {
   const answer = state.answers.other_symptoms;
-  const blocked = statusLabel(answer?.status);
+  const blocked = statusLine(answer?.status, lang);
   const detail = getOtherSymptomsDetail(state);
+  const label = line(SUMMARY_COPY.sense, lang);
 
   if (
     blocked &&
@@ -252,35 +341,40 @@ function formatOtherSymptoms(state: CaseState): SummarySection {
   ) {
     return {
       key: "other_symptoms",
-      label: "感",
+      label,
       value: blocked.value,
       obtained: false,
       editStep: "other_symptoms",
     };
   }
 
-  const parts: string[] = [];
-  if (detail.symptomIds.length) {
-    parts.push(
-      joinZh(
-        detail.symptomIds,
-        (id) => getAccompanyingSymptom(id)?.labels.zh,
-      ),
-    );
-  }
-  if (detail.bodyRegionIds.length) {
-    const regions = joinZh(
-      detail.bodyRegionIds,
-      (id) => getBodyRegion(id)?.labels.zh,
-    );
-    parts.push(`其他部位：${regions}`);
-  }
+  const partsFor = (L: Lang) => {
+    const parts: string[] = [];
+    if (detail.symptomIds.length) {
+      parts.push(
+        joinIds(detail.symptomIds, L, (id) => {
+          const labels = getAccompanyingSymptom(id)?.labels;
+          return labels ? pick(labels, L) : undefined;
+        }),
+      );
+    }
+    if (detail.bodyRegionIds.length) {
+      const regions = joinIds(detail.bodyRegionIds, L, (id) => {
+        const labels = getBodyRegion(id)?.labels;
+        return labels ? pick(labels, L) : undefined;
+      });
+      parts.push(`${pick(SUMMARY_COPY.otherBody, L)}：${regions}`);
+    }
+    return parts;
+  };
 
-  if (!parts.length) {
+  const zhParts = partsFor("zh");
+  const otherParts = partsFor(lang);
+  if (!zhParts.length) {
     return {
       key: "other_symptoms",
-      label: "感",
-      value: "未取得",
+      label,
+      value: line(SUMMARY_COPY.notObtained, lang),
       obtained: false,
       editStep: "other_symptoms",
     };
@@ -288,61 +382,68 @@ function formatOtherSymptoms(state: CaseState): SummarySection {
 
   return {
     key: "other_symptoms",
-    label: "感",
-    value: parts.join("；"),
+    label,
+    value: { zh: zhParts.join("；"), other: otherParts.join("；") },
     obtained: true,
     editStep: "other_symptoms",
   };
 }
 
-function formatInformant(state: CaseState): SummarySection {
+function formatInformant(
+  state: CaseState,
+  lang: SecondLanguage,
+): SummarySection {
+  const label = line(SUMMARY_COPY.informant, lang);
   if (!state.informant) {
     return {
       key: "informant",
-      label: "答題者",
-      value: "未取得",
+      label,
+      value: line(SUMMARY_COPY.notObtained, lang),
       obtained: false,
       editStep: "start",
     };
   }
 
-  const current = INFORMANT_ZH[state.informant];
-  const history = state.informantHistory.map((i) => INFORMANT_ZH[i]);
-  const changed =
-    history.length > 1
-      ? `（中途變更：${history.join(" → ")}）`
-      : "";
+  const valueFor = (L: Lang) => {
+    const current = informantName(state.informant!, L);
+    const history = state.informantHistory.map((i) => informantName(i, L));
+    const changed =
+      history.length > 1
+        ? `（${pick(SUMMARY_COPY.midChange, L)}：${history.join(" → ")}）`
+        : "";
+    return `${current}${changed}`;
+  };
 
   return {
     key: "informant",
-    label: "答題者",
-    value: `${current}${changed}`,
+    label,
+    value: { zh: valueFor("zh"), other: valueFor(lang) },
     obtained: true,
     editStep: "start",
   };
 }
 
 export function buildSummarySections(state: CaseState): SummarySection[] {
+  const lang = state.secondLanguage ?? "en";
   return [
-    formatInformant(state),
-    formatChiefComplaint(state),
-    formatHistoryStep(state, "before", "之前"),
-    formatHistoryStep(state, "intake", "吃"),
-    formatHistoryStep(state, "past_history", "過"),
-    formatHistoryStep(state, "medications", "藥"),
-    formatHistoryStep(state, "allergies", "敏"),
-    formatOtherSymptoms(state),
+    formatInformant(state, lang),
+    formatChiefComplaint(state, lang),
+    formatHistoryStep(state, "before", lang),
+    formatHistoryStep(state, "intake", lang),
+    formatHistoryStep(state, "past_history", lang),
+    formatHistoryStep(state, "medications", lang),
+    formatHistoryStep(state, "allergies", lang),
+    formatOtherSymptoms(state, lang),
   ];
 }
 
+/** Always Chinese — for clipboard / record paste. */
 export function formatSummaryText(state: CaseState): string {
   const lines = [
     "【救護現場雙語溝通輔助 · 本機摘要】",
     DISCLAIMER_ZH,
     "",
-    ...buildSummarySections(state).map(
-      (s) => `${s.label}：${s.value}${s.obtained ? "" : ""}`,
-    ),
+    ...buildSummarySections(state).map((s) => `${s.label.zh}：${s.value.zh}`),
   ];
   return lines.join("\n");
 }

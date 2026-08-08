@@ -3,85 +3,40 @@ import {
   COMPLAINT_TYPES,
   getBodyRegion,
 } from "./catalog/chief-complaint-1.js";
+import { visibleQualityOptions } from "./catalog/chief-complaint-quality.js";
 import {
   TIME_BUCKETS,
   TIME_UNITS,
   formatApproxDuration,
-  visibleQualityOptions,
-} from "./catalog/chief-complaint-2.js";
+} from "./catalog/chief-complaint-duration.js";
 import {
   HISTORY_STEP_ORDER,
   getHistoryCatalog,
   isHistoryStep,
   type HistoryStepId,
 } from "./catalog/history-block.js";
-import { bilingualPair, type BilingualText } from "./catalog/labels.js";
+import { type BilingualText } from "./catalog/labels.js";
 import { ACCOMPANYING_SYMPTOMS } from "./catalog/other-symptoms.js";
 import { UI_COPY } from "./catalog/ui-copy.js";
 import {
-  beginInterview,
+  apply,
   buildSummarySections,
-  canBeginInterview,
-  canCompleteChiefComplaint1,
-  canCompleteChiefComplaint2,
-  canCompleteChiefComplaintDuration,
-  canCompleteListStep,
-  canCompleteOtherSymptoms,
-  clearBodyDrilldown,
-  clearOtherBodyDrilldown,
-  completeChiefComplaint1,
-  completeChiefComplaint2,
-  completeChiefComplaintDuration,
-  completeListStep,
-  completeOtherSymptoms,
   createCase,
-  editFromSummary,
-  finishCase,
+  formatDurationForLang,
   formatSummaryText,
   getChiefComplaint1Detail,
-  getChiefComplaint2Detail,
+  getChiefComplaintQualityDetail,
+  getChiefComplaintDurationDetail,
   getListNote,
   getListOptionIds,
   getOtherSymptomsDetail,
-  goBackFromChiefComplaint1,
-  goBackFromChiefComplaint2,
-  goBackFromChiefComplaintDuration,
-  goBackFromOtherSymptoms,
-  goBackListStep,
-  goToStep,
   listStepNeedsNote,
-  markChiefComplaint1Unknown,
-  markChiefComplaint2Unknown,
-  markChiefComplaintDurationUnknown,
-  markListStepUnknown,
-  markOtherSymptomsUnknown,
   needsBodyLocation,
-  returnToSummaryView,
-  formatDurationForLang,
-  selectTimeBucket,
-  setInformant,
-  setListNote,
-  setPainScore,
-  setSecondLanguage,
-  setTimeAmount,
-  setTimeRefine,
-  setTimeUnit,
   showsPainScale,
-  skipChiefComplaint1,
-  skipChiefComplaint2,
-  skipChiefComplaintDuration,
-  skipListStep,
-  skipOtherSymptoms,
-  toggleAccompanyingSymptom,
-  toggleBodyRegion,
-  toggleBodySubregion,
-  toggleComplaintType,
-  toggleListOption,
-  toggleOtherBodyRegion,
-  toggleOtherBodySubregion,
-  toggleQuality,
+  viewFacts,
   type CaseState,
-  type Informant,
+  type GateReason,
+  type Intent,
   type InterviewStep,
   type SecondLanguage,
 } from "./case-session/index.js";
@@ -90,6 +45,19 @@ import {
   INFORMANT_OPTIONS,
   SECOND_LANGUAGE_OPTIONS,
 } from "./content/start-labels.js";
+import { SUMMARY_COPY } from "./catalog/summary-copy.js";
+import {
+  bilingualButtonHtml,
+  bilingualHeadingParts,
+  bilingualInline,
+  bilingualSectionTitle as bilingualSectionTitleFor,
+  orderPair,
+  type BilingualPrimacy,
+} from "./presentation/bilingual.js";
+
+/** Interview + summary display: second language on top, Chinese secondary. */
+const INTERVIEW_PRIMACY: BilingualPrimacy = "second";
+const SUMMARY_PRIMACY: BilingualPrimacy = "second";
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -129,11 +97,124 @@ function lockPageZoom(): void {
 lockPageZoom();
 
 let state: CaseState = createCase();
-/** Start flow is two pages: language → informant. */
-let startPhase: "language" | "informant" = "language";
 
 function secondLang(): SecondLanguage {
   return state.secondLanguage ?? "en";
+}
+
+const GATE_COPY: Record<GateReason, string> = {
+  need_second_language: "請選擇語言",
+  need_informant: "請選擇正在回答問題的是誰",
+  need_complaint_type: "請選擇主訴，或按「不知道／無法回答／跳過」",
+  need_body_location: "此主訴需點選身體部位後才能下一步",
+  need_quality_or_pain:
+    "請選擇怎麼不舒服（或「同哪裡不舒服」／疼痛指數），或按「不知道／無法回答／跳過」",
+  need_duration:
+    "請輸入多久了（數字＋單位）或時段，或按「不知道／無法回答／跳過」",
+  need_list_selection: "請選擇至少一項，或按「不知道／無法回答／跳過」",
+  need_other_symptom_or_body:
+    "請選擇伴隨症狀或身體部位，或按「不知道／無法回答／跳過」",
+};
+
+function softGateNote(): string {
+  if (state.currentStep === "start") return "";
+  const reason = viewFacts(state).gate.reason;
+  if (!reason) return "";
+  return gateNote(GATE_COPY[reason]);
+}
+
+function nextDisabledAttr(): string {
+  return viewFacts(state).gate.nextEnabled ? "" : "disabled";
+}
+
+function toIntent(
+  action: string,
+  id: string | undefined,
+  stepAttr: string | undefined,
+  inputValue?: string,
+): Intent | null {
+  switch (action) {
+    case "lang":
+      return id ? { type: "edit", slot: "secondLanguage", value: id } : null;
+    case "informant":
+      return id ? { type: "edit", slot: "informant", value: id } : null;
+    case "start-lang-next":
+    case "begin":
+    case "cc1-next":
+    case "ccq-next":
+    case "ccd-next":
+    case "hist-next":
+    case "sense-next":
+      return { type: "nav", move: "next" };
+    case "start-informant-back":
+    case "cc1-back":
+    case "ccq-back":
+    case "ccd-back":
+    case "hist-back":
+    case "sense-back":
+      return { type: "nav", move: "back" };
+    case "cc1-unknown":
+    case "ccq-unknown":
+    case "ccd-unknown":
+    case "hist-unknown":
+    case "sense-unknown":
+      return { type: "nav", move: "unknown" };
+    case "cc1-skip":
+    case "ccq-skip":
+    case "ccd-skip":
+    case "hist-skip":
+    case "sense-skip":
+      return { type: "nav", move: "skip" };
+    case "cc1-complaint":
+      return id ? { type: "edit", slot: "complaintType", value: id } : null;
+    case "cc1-body":
+      return id ? { type: "edit", slot: "bodyRegion", value: id } : null;
+    case "cc1-sub":
+      return id ? { type: "edit", slot: "bodySubregion", value: id } : null;
+    case "cc1-drill-done":
+      return { type: "edit", slot: "bodyDrilldown" };
+    case "ccq-quality":
+      return id ? { type: "edit", slot: "quality", value: id } : null;
+    case "ccq-pain":
+      return id ? { type: "edit", slot: "painScore", value: id } : null;
+    case "ccd-time":
+      return id ? { type: "edit", slot: "timeBucket", value: id } : null;
+    case "ccd-time-unit":
+      return id ? { type: "edit", slot: "timeUnit", value: id } : null;
+    case "ccd-time-amount":
+      return { type: "edit", slot: "timeAmount", value: inputValue ?? "" };
+    case "ccd-refine":
+      return { type: "edit", slot: "timeRefine", value: inputValue ?? "" };
+    case "hist-option":
+      return id ? { type: "edit", slot: "listOption", value: id } : null;
+    case "hist-note":
+      return { type: "edit", slot: "listNote", value: inputValue ?? "" };
+    case "hist-goto":
+      return id && isHistoryStep(id)
+        ? { type: "nav", move: "goto", step: id }
+        : null;
+    case "sense-symptom":
+      return id
+        ? { type: "edit", slot: "accompanyingSymptom", value: id }
+        : null;
+    case "sense-body":
+      return id ? { type: "edit", slot: "otherBodyRegion", value: id } : null;
+    case "sense-sub":
+      return id ? { type: "edit", slot: "otherBodySubregion", value: id } : null;
+    case "sense-drill-done":
+      return { type: "edit", slot: "otherBodyDrilldown" };
+    case "summary-edit":
+      return id && isInterviewStep(id)
+        ? { type: "nav", move: "edit", step: id }
+        : null;
+    case "summary-return":
+      return { type: "nav", move: "return_to_summary" };
+    case "summary-finish":
+      return { type: "nav", move: "finish" };
+    default:
+      void stepAttr;
+      return null;
+  }
 }
 
 function ensureShell(): void {
@@ -183,42 +264,6 @@ function gateNote(message: string): string {
   return `<p class="status-note gate-note">${message}</p>`;
 }
 
-function cc1GateNote(): string {
-  if (canCompleteChiefComplaint1(state)) return "";
-  const detail = getChiefComplaint1Detail(state);
-  if (detail.complaintTypeIds.length === 0) {
-    return gateNote("請選擇主訴，或按「不知道／無法回答／跳過」");
-  }
-  if (needsBodyLocation(state) && detail.bodyRegionIds.length === 0) {
-    return gateNote("此主訴需點選身體部位後才能下一步");
-  }
-  return "";
-}
-
-function cc2GateNote(): string {
-  if (canCompleteChiefComplaint2(state)) return "";
-  return gateNote(
-    "請選擇怎麼不舒服（或「同哪裡不舒服」／疼痛指數），或按「不知道／無法回答／跳過」",
-  );
-}
-
-function ccDurationGateNote(): string {
-  if (canCompleteChiefComplaintDuration(state)) return "";
-  return gateNote(
-    "請輸入多久了（數字＋單位）或時段，或按「不知道／無法回答／跳過」",
-  );
-}
-
-function histGateNote(step: HistoryStepId): string {
-  if (canCompleteListStep(state, step)) return "";
-  return gateNote("請選擇至少一項，或按「不知道／無法回答／跳過」");
-}
-
-function senseGateNote(): string {
-  if (canCompleteOtherSymptoms(state)) return "";
-  return gateNote("請選擇伴隨症狀或身體部位，或按「不知道／無法回答／跳過」");
-}
-
 function render(): void {
   ensureShell();
   const prevStep = app!.dataset.step;
@@ -231,8 +276,8 @@ function render(): void {
     case "chief_complaint_1":
       renderChiefComplaint1();
       break;
-    case "chief_complaint_2":
-      renderChiefComplaint2();
+    case "chief_complaint_quality":
+      renderChiefComplaintQuality();
       break;
     case "chief_complaint_duration":
       renderChiefComplaintDuration();
@@ -361,7 +406,7 @@ function renderHistoryStep(step: HistoryStepId): void {
       </section>
       ${noteBlock}
       ${statusNote}
-      ${histGateNote(step)}
+      ${softGateNote()}
     `,
     actions: `
       <div class="actions">
@@ -369,9 +414,7 @@ function renderHistoryStep(step: HistoryStepId): void {
         <button type="button" class="ghost" data-action="hist-unknown" data-step="${step}">不知道</button>
         <button type="button" class="ghost" data-action="hist-unknown" data-step="${step}">無法回答</button>
         <button type="button" class="ghost" data-action="hist-skip" data-step="${step}">跳過</button>
-        <button type="button" class="primary" data-action="hist-next" data-step="${step}" ${
-          canCompleteListStep(state, step) ? "" : "disabled"
-        }>下一步</button>
+        <button type="button" class="primary" data-action="hist-next" data-step="${step}" ${nextDisabledAttr()}>下一步</button>
       </div>
       ${returnSummaryBar()}
     `,
@@ -379,11 +422,11 @@ function renderHistoryStep(step: HistoryStepId): void {
 }
 
 function renderStart(): void {
-  if (startPhase === "informant" && state.secondLanguage) {
+  const screen = viewFacts(state).screen;
+  if (screen.step === "start" && screen.startPhase === "informant") {
     renderStartInformant();
     return;
   }
-  startPhase = "language";
   renderStartLanguage();
 }
 
@@ -429,9 +472,7 @@ function renderStartLanguage(): void {
       </section>
     `,
     actions: `
-      <button type="button" class="primary" data-action="start-lang-next" ${
-        state.secondLanguage ? "" : "disabled"
-      }>下一步</button>
+      <button type="button" class="primary" data-action="start-lang-next" ${nextDisabledAttr()}>下一步</button>
       ${returnSummaryBar()}
     `,
   });
@@ -470,9 +511,7 @@ function renderStartInformant(): void {
     actions: `
       <div class="actions">
         <button type="button" class="secondary" data-action="start-informant-back">上一步</button>
-        <button type="button" class="primary" data-action="begin" ${
-          canBeginInterview(state) ? "" : "disabled"
-        }>
+        <button type="button" class="primary" data-action="begin" ${nextDisabledAttr()}>
           ${state.returnToSummary ? "回摘要" : "開始問診"}
         </button>
       </div>
@@ -481,20 +520,16 @@ function renderStartInformant(): void {
   });
 }
 
-/** Interview options: second language primary (top), Chinese secondary. */
 function bilingualButtonLabel(labels: BilingualText): string {
-  const pair = bilingualPair(labels, secondLang());
-  return `<span class="zh">${pair.other}</span><span class="sub">${pair.zh}</span>`;
+  return bilingualButtonHtml(labels, secondLang(), INTERVIEW_PRIMACY);
 }
 
 function bilingualHeading(text: BilingualText): { title: string; lead: string } {
-  const pair = bilingualPair(text, secondLang());
-  return { title: pair.other, lead: pair.zh };
+  return bilingualHeadingParts(text, secondLang(), INTERVIEW_PRIMACY);
 }
 
 function bilingualSectionTitle(text: BilingualText): string {
-  const pair = bilingualPair(text, secondLang());
-  return `${pair.other} · ${pair.zh}`;
+  return bilingualSectionTitleFor(text, secondLang(), INTERVIEW_PRIMACY);
 }
 
 const LANG_FLAGS: Record<SecondLanguage, string> = {
@@ -513,7 +548,7 @@ const LANG_FLAGS: Record<SecondLanguage, string> = {
 const INTERVIEW_STEPS: InterviewStep[] = [
   "start",
   "chief_complaint_1",
-  "chief_complaint_2",
+  "chief_complaint_quality",
   "chief_complaint_duration",
   "before",
   "intake",
@@ -536,38 +571,14 @@ function renderChiefComplaint1(): void {
     : undefined;
 
   if (drillRegion && drillRegion.subregions.length > 0) {
-    const subButtons = drillRegion.subregions
-      .map((sub) => {
-        const pressed = detail.bodySubregionIds.includes(sub.id);
-        return `
-          <button
-            type="button"
-            class="option"
-            data-action="cc1-sub"
-            data-id="${sub.id}"
-            aria-pressed="${pressed}"
-          >
-            ${bilingualButtonLabel(sub.labels)}
-          </button>
-        `;
-      })
-      .join("");
-
-    const regionPair = bilingualPair(drillRegion.labels, secondLang());
-    getView().innerHTML = screenLayout({
-      header: `
-        <header class="step-header">
-          <p class="eyebrow">主訴 · 1／3</p>
-          <h1>${regionPair.other} — finer location</h1>
-          <p class="lead">${regionPair.zh} — 更精確位置（選填）</p>
-        </header>
-      `,
-      body: `<div class="option-grid cols-2 fill-grid">${subButtons}</div>`,
-      actions: `
-        <div class="actions">
-          <button type="button" class="secondary" data-action="cc1-drill-done">完成細分／略過</button>
-        </div>
-      `,
+    paintBodyDrilldown({
+      eyebrow: "主訴 · 1／3",
+      titleSuffix: " — finer location",
+      region: drillRegion,
+      selectedSubIds: detail.bodySubregionIds,
+      subAction: "cc1-sub",
+      doneAction: "cc1-drill-done",
+      leadZhSuffix: "更精確位置（選填）",
     });
     return;
   }
@@ -600,7 +611,11 @@ function renderChiefComplaint1(): void {
   const title = bilingualHeading(UI_COPY.cc1Title);
   const what = bilingualSectionTitle(UI_COPY.cc1What);
   const where = bilingualSectionTitle(UI_COPY.cc1Where);
-  const whereOpt = bilingualPair(UI_COPY.cc1WhereOptional, secondLang());
+  const whereOpt = bilingualInline(
+    UI_COPY.cc1WhereOptional,
+    secondLang(),
+    INTERVIEW_PRIMACY,
+  );
 
   getView().innerHTML = screenLayout({
     header: `
@@ -617,12 +632,12 @@ function renderChiefComplaint1(): void {
           <div class="option-grid cols-2 fill-grid">${complaintButtons}</div>
         </section>
         <section class="section grow">
-          <h2>${where}${showBody ? "" : ` <span class="sub">${whereOpt.other} · ${whereOpt.zh}</span>`}</h2>
+          <h2>${where}${showBody ? "" : ` <span class="sub">${whereOpt.primary} · ${whereOpt.secondary}</span>`}</h2>
           ${bodyMap}
         </section>
       </div>
       ${statusNote}
-      ${cc1GateNote()}
+      ${softGateNote()}
     `,
     actions: `
       <div class="actions">
@@ -630,17 +645,15 @@ function renderChiefComplaint1(): void {
         <button type="button" class="ghost" data-action="cc1-unknown">不知道</button>
         <button type="button" class="ghost" data-action="cc1-unknown">無法回答</button>
         <button type="button" class="ghost" data-action="cc1-skip">跳過</button>
-        <button type="button" class="primary" data-action="cc1-next" ${
-          canCompleteChiefComplaint1(state) ? "" : "disabled"
-        }>下一步</button>
+        <button type="button" class="primary" data-action="cc1-next" ${nextDisabledAttr()}>下一步</button>
       </div>
       ${returnSummaryBar()}
     `,
   });
 }
 
-function renderChiefComplaint2(): void {
-  const detail = getChiefComplaint2Detail(state);
+function renderChiefComplaintQuality(): void {
+  const detail = getChiefComplaintQualityDetail(state);
   const pain = showsPainScale(state);
 
   const qualityButtons = visibleQualityOptions(pain)
@@ -650,7 +663,7 @@ function renderChiefComplaint2(): void {
         <button
           type="button"
           class="option"
-          data-action="cc2-quality"
+          data-action="ccq-quality"
           data-id="${opt.id}"
           aria-pressed="${pressed}"
         >
@@ -668,7 +681,7 @@ function renderChiefComplaint2(): void {
             <button
               type="button"
               class="pain-score"
-              data-action="cc2-pain"
+              data-action="ccq-pain"
               data-id="${n}"
               aria-pressed="${pressed}"
             >${n}</button>
@@ -677,7 +690,7 @@ function renderChiefComplaint2(): void {
         .join("")
     : "";
 
-  const status = state.answers.chief_complaint_2?.status;
+  const status = state.answers.chief_complaint_quality?.status;
   const statusNote =
     status === "unknown"
       ? `<p class="status-note">已標示：不知道</p>`
@@ -685,9 +698,9 @@ function renderChiefComplaint2(): void {
         ? `<p class="status-note">已標示：跳過</p>`
         : "";
 
-  const title = bilingualHeading(UI_COPY.cc2Title);
-  const quality = bilingualSectionTitle(UI_COPY.cc2Quality);
-  const painTitle = bilingualSectionTitle(UI_COPY.cc2Pain);
+  const title = bilingualHeading(UI_COPY.ccQualityTitle);
+  const quality = bilingualSectionTitle(UI_COPY.ccQuality);
+  const painTitle = bilingualSectionTitle(UI_COPY.ccPain);
 
   getView().innerHTML = screenLayout({
     header: `
@@ -711,17 +724,15 @@ function renderChiefComplaint2(): void {
           : ""
       }
       ${statusNote}
-      ${cc2GateNote()}
+      ${softGateNote()}
     `,
     actions: `
       <div class="actions">
-        <button type="button" class="secondary" data-action="cc2-back">上一步</button>
-        <button type="button" class="ghost" data-action="cc2-unknown">不知道</button>
-        <button type="button" class="ghost" data-action="cc2-unknown">無法回答</button>
-        <button type="button" class="ghost" data-action="cc2-skip">跳過</button>
-        <button type="button" class="primary" data-action="cc2-next" ${
-          canCompleteChiefComplaint2(state) ? "" : "disabled"
-        }>下一步</button>
+        <button type="button" class="secondary" data-action="ccq-back">上一步</button>
+        <button type="button" class="ghost" data-action="ccq-unknown">不知道</button>
+        <button type="button" class="ghost" data-action="ccq-unknown">無法回答</button>
+        <button type="button" class="ghost" data-action="ccq-skip">跳過</button>
+        <button type="button" class="primary" data-action="ccq-next" ${nextDisabledAttr()}>下一步</button>
       </div>
       ${returnSummaryBar()}
     `,
@@ -729,7 +740,7 @@ function renderChiefComplaint2(): void {
 }
 
 function renderChiefComplaintDuration(): void {
-  const detail = getChiefComplaint2Detail(state);
+  const detail = getChiefComplaintDurationDetail(state);
   const lang = secondLang();
 
   const justNow = TIME_BUCKETS.find((b) => b.id === "just_now");
@@ -788,10 +799,14 @@ function renderChiefComplaintDuration(): void {
         : "";
 
   const title = bilingualHeading(UI_COPY.ccDurationTitle);
-  const duration = bilingualSectionTitle(UI_COPY.cc2Duration);
-  const about = bilingualPair(UI_COPY.cc2DurationAbout, lang);
-  const previewLabel = bilingualPair(UI_COPY.cc2DurationPreview, lang);
-  const period = bilingualSectionTitle(UI_COPY.cc2Period);
+  const duration = bilingualSectionTitle(UI_COPY.ccDuration);
+  const about = bilingualInline(UI_COPY.ccDurationAbout, lang, INTERVIEW_PRIMACY);
+  const previewLabel = bilingualInline(
+    UI_COPY.ccDurationPreview,
+    lang,
+    INTERVIEW_PRIMACY,
+  );
+  const period = bilingualSectionTitle(UI_COPY.ccPeriod);
 
   const previewZh =
     detail.timeAmount && detail.timeUnit
@@ -804,13 +819,13 @@ function renderChiefComplaintDuration(): void {
   const previewBlock =
     previewZh || previewOther
       ? `<p class="duration-preview" aria-live="polite">
-          <span class="preview-label">${previewLabel.other} · ${previewLabel.zh}</span>
+          <span class="preview-label">${previewLabel.primary} · ${previewLabel.secondary}</span>
           <span class="zh">${previewOther || "—"}</span>
           <span class="sub">${previewZh || "—"}</span>
         </p>`
       : `<p class="duration-preview is-empty" aria-live="polite">
-          <span class="preview-label">${previewLabel.other} · ${previewLabel.zh}</span>
-          <span class="zh">${about.other} ＿＿</span>
+          <span class="preview-label">${previewLabel.primary} · ${previewLabel.secondary}</span>
+          <span class="zh">${about.primary} ＿＿</span>
           <span class="sub">約＿＿分鐘／小時／日</span>
         </p>`;
 
@@ -827,8 +842,8 @@ function renderChiefComplaintDuration(): void {
         <h2>${duration}</h2>
         <div class="duration-entry">
           <span class="duration-prefix">
-            <span class="zh">${about.other}</span>
-            <span class="sub">${about.zh}</span>
+            <span class="zh">${about.primary}</span>
+            <span class="sub">${about.secondary}</span>
           </span>
           <input
             class="duration-amount"
@@ -865,7 +880,7 @@ function renderChiefComplaintDuration(): void {
         />
       </section>
       ${statusNote}
-      ${ccDurationGateNote()}
+      ${softGateNote()}
     `,
     actions: `
       <div class="actions">
@@ -873,11 +888,61 @@ function renderChiefComplaintDuration(): void {
         <button type="button" class="ghost" data-action="ccd-unknown">不知道</button>
         <button type="button" class="ghost" data-action="ccd-unknown">無法回答</button>
         <button type="button" class="ghost" data-action="ccd-skip">跳過</button>
-        <button type="button" class="primary" data-action="ccd-next" ${
-          canCompleteChiefComplaintDuration(state) ? "" : "disabled"
-        }>下一步</button>
+        <button type="button" class="primary" data-action="ccd-next" ${nextDisabledAttr()}>下一步</button>
       </div>
       ${returnSummaryBar()}
+    `,
+  });
+}
+
+function paintBodyDrilldown(opts: {
+  eyebrow: string;
+  titleSuffix?: string;
+  region: NonNullable<ReturnType<typeof getBodyRegion>>;
+  selectedSubIds: string[];
+  subAction: string;
+  doneAction: string;
+  leadZhSuffix: string;
+  chromeExtra?: string;
+}): void {
+  const subButtons = opts.region.subregions
+    .map((sub) => {
+      const pressed = opts.selectedSubIds.includes(sub.id);
+      return `
+        <button
+          type="button"
+          class="option"
+          data-action="${opts.subAction}"
+          data-id="${sub.id}"
+          aria-pressed="${pressed}"
+        >
+          ${bilingualButtonLabel(sub.labels)}
+        </button>
+      `;
+    })
+    .join("");
+  const regionPair = bilingualHeadingParts(
+    opts.region.labels,
+    secondLang(),
+    INTERVIEW_PRIMACY,
+  );
+  const title = opts.titleSuffix
+    ? `${regionPair.title}${opts.titleSuffix}`
+    : regionPair.title;
+  getView().innerHTML = screenLayout({
+    header: `
+      <header class="step-header">
+        <p class="eyebrow">${opts.eyebrow}</p>
+        <h1>${title}</h1>
+        <p class="lead">${regionPair.lead} — ${opts.leadZhSuffix}</p>
+      </header>
+    `,
+    body: `<div class="option-grid cols-2 fill-grid">${subButtons}</div>`,
+    actions: `
+      <div class="actions">
+        <button type="button" class="secondary" data-action="${opts.doneAction}">完成細分／略過</button>
+      </div>
+      ${opts.chromeExtra ?? ""}
     `,
   });
 }
@@ -923,32 +988,14 @@ function renderOtherSymptoms(): void {
     : undefined;
 
   if (drillRegion && drillRegion.subregions.length > 0) {
-    const subButtons = drillRegion.subregions
-      .map((sub) => {
-        const pressed = detail.bodySubregionIds.includes(sub.id);
-        return `
-          <button type="button" class="option" data-action="sense-sub" data-id="${sub.id}" aria-pressed="${pressed}">
-            ${bilingualButtonLabel(sub.labels)}
-          </button>
-        `;
-      })
-      .join("");
-    const regionPair = bilingualPair(drillRegion.labels, secondLang());
-    getView().innerHTML = screenLayout({
-      header: `
-        <header class="step-header">
-          <p class="eyebrow">感 · 二次掃描</p>
-          <h1>${regionPair.other}</h1>
-          <p class="lead">${regionPair.zh} — 更精確位置</p>
-        </header>
-      `,
-      body: `<div class="option-grid cols-2 fill-grid">${subButtons}</div>`,
-      actions: `
-        <div class="actions">
-          <button type="button" class="secondary" data-action="sense-drill-done">完成細分／略過</button>
-        </div>
-        ${returnSummaryBar()}
-      `,
+    paintBodyDrilldown({
+      eyebrow: "感 · 二次掃描",
+      region: drillRegion,
+      selectedSubIds: detail.bodySubregionIds,
+      subAction: "sense-sub",
+      doneAction: "sense-drill-done",
+      leadZhSuffix: "更精確位置",
+      chromeExtra: returnSummaryBar(),
     });
     return;
   }
@@ -971,31 +1018,31 @@ function renderOtherSymptoms(): void {
         : "";
 
   const title = bilingualHeading(UI_COPY.senseTitle);
-  const lead = bilingualPair(UI_COPY.senseLead, secondLang());
-  const symptoms = bilingualPair(UI_COPY.senseSymptoms, secondLang());
-  const body = bilingualPair(UI_COPY.senseBody, secondLang());
+  const lead = bilingualInline(UI_COPY.senseLead, secondLang(), INTERVIEW_PRIMACY);
+  const symptoms = bilingualSectionTitle(UI_COPY.senseSymptoms);
+  const body = bilingualSectionTitle(UI_COPY.senseBody);
 
   getView().innerHTML = screenLayout({
     header: `
       <header class="step-header">
         <p class="eyebrow">感</p>
         <h1>${title.title}</h1>
-        <p class="lead">${title.lead} · ${lead.other}</p>
+        <p class="lead">${title.lead} · ${lead.primary}</p>
       </header>
     `,
     body: `
       <div class="split-panels">
         <section class="section grow">
-          <h2>${symptoms.other} · ${symptoms.zh}</h2>
+          <h2>${symptoms}</h2>
           <div class="option-grid cols-2 fill-grid">${symptomButtons}</div>
         </section>
         <section class="section grow ${exclusive ? "is-disabled" : ""}">
-          <h2>${body.other} · ${body.zh}</h2>
+          <h2>${body}</h2>
           ${renderBodyMap(detail.bodyRegionIds, "sense-body")}
         </section>
       </div>
       ${statusNote}
-      ${senseGateNote()}
+      ${softGateNote()}
     `,
     actions: `
       <div class="actions">
@@ -1003,9 +1050,7 @@ function renderOtherSymptoms(): void {
         <button type="button" class="ghost" data-action="sense-unknown">不知道</button>
         <button type="button" class="ghost" data-action="sense-unknown">無法回答</button>
         <button type="button" class="ghost" data-action="sense-skip">跳過</button>
-        <button type="button" class="primary" data-action="sense-next" ${
-          canCompleteOtherSymptoms(state) ? "" : "disabled"
-        }>看摘要</button>
+        <button type="button" class="primary" data-action="sense-next" ${nextDisabledAttr()}>看摘要</button>
       </div>
       ${returnSummaryBar()}
     `,
@@ -1013,14 +1058,36 @@ function renderOtherSymptoms(): void {
 }
 
 function renderSummary(): void {
+  const lang = secondLang();
+  const header = bilingualHeadingParts(
+    SUMMARY_COPY.title,
+    lang,
+    SUMMARY_PRIMACY,
+  );
+  const eyebrow = bilingualInline(SUMMARY_COPY.eyebrow, lang, SUMMARY_PRIMACY);
+  const lead = bilingualInline(SUMMARY_COPY.lead, lang, SUMMARY_PRIMACY);
+  const edit = bilingualInline(SUMMARY_COPY.edit, lang, SUMMARY_PRIMACY);
+  const copyHint = bilingualInline(SUMMARY_COPY.copyHint, lang, SUMMARY_PRIMACY);
+
   const sections = buildSummarySections(state)
     .map((s) => {
       const tone = s.obtained ? "" : " is-missing";
+      const label = orderPair(s.label, SUMMARY_PRIMACY);
+      const value = orderPair(s.value, SUMMARY_PRIMACY);
       return `
         <button type="button" class="summary-row${tone}" data-action="summary-edit" data-id="${s.editStep}">
-          <span class="summary-label">${s.label}</span>
-          <span class="summary-value">${escapeHtml(s.value)}</span>
-          <span class="summary-edit">編輯</span>
+          <span class="summary-label">
+            <span class="zh">${escapeHtml(label.primary)}</span>
+            <span class="sub">${escapeHtml(label.secondary)}</span>
+          </span>
+          <span class="summary-value">
+            <span class="zh">${escapeHtml(value.primary)}</span>
+            <span class="sub">${escapeHtml(value.secondary)}</span>
+          </span>
+          <span class="summary-edit">
+            <span class="zh">${escapeHtml(edit.primary)}</span>
+            <span class="sub">${escapeHtml(edit.secondary)}</span>
+          </span>
         </button>
       `;
     })
@@ -1029,15 +1096,19 @@ function renderSummary(): void {
   getView().innerHTML = screenLayout({
     header: `
       <header class="step-header">
-        <p class="eyebrow">本機摘要</p>
-        <h1>現場資訊彙整</h1>
-        <p class="lead">可複製後貼到紀錄；結束即清除。</p>
+        <p class="eyebrow"><span class="zh">${escapeHtml(eyebrow.primary)}</span> · <span class="sub">${escapeHtml(eyebrow.secondary)}</span></p>
+        <h1>${escapeHtml(header.title)}</h1>
+        <p class="lead">${escapeHtml(header.lead)}</p>
+        <p class="lead subtle">${escapeHtml(lead.primary)} · ${escapeHtml(lead.secondary)}</p>
       </header>
     `,
     body: `<div class="summary-list fill-grid">${sections}</div>`,
     actions: `
       <div class="actions">
-        <button type="button" class="secondary" data-action="summary-copy">複製摘要</button>
+        <button type="button" class="secondary" data-action="summary-copy">
+          <span class="zh">${escapeHtml(copyHint.primary)}</span>
+          <span class="sub">${escapeHtml(copyHint.secondary)}</span>
+        </button>
         <button type="button" class="primary" data-action="summary-finish">結束／新案件</button>
       </div>
       <p class="copy-status" data-copy-status hidden></p>
@@ -1066,190 +1137,32 @@ app.addEventListener("click", (event) => {
   if (!target) return;
 
   const action = target.dataset.action;
-  const id = target.dataset.id;
+  if (!action) return;
 
-  switch (action) {
-    case "lang":
-      if (id) state = setSecondLanguage(state, id as SecondLanguage);
-      break;
-    case "start-lang-next":
-      if (state.secondLanguage) startPhase = "informant";
-      break;
-    case "start-informant-back":
-      startPhase = "language";
-      break;
-    case "informant":
-      if (id) state = setInformant(state, id as Informant);
-      break;
-    case "begin":
-      state = state.returnToSummary
-        ? returnToSummaryView(state)
-        : beginInterview(state);
-      break;
-    case "cc1-complaint":
-      if (id) state = toggleComplaintType(state, id);
-      break;
-    case "cc1-body":
-      if (id) state = toggleBodyRegion(state, id);
-      break;
-    case "cc1-sub":
-      if (id) state = toggleBodySubregion(state, id);
-      break;
-    case "cc1-drill-done":
-      state = clearBodyDrilldown(state);
-      break;
-    case "cc1-unknown":
-      state = markChiefComplaint1Unknown(state);
-      break;
-    case "cc1-skip":
-      state = skipChiefComplaint1(state);
-      break;
-    case "cc1-next":
-      state = completeChiefComplaint1(state);
-      break;
-    case "cc1-back":
-      state = goBackFromChiefComplaint1(state);
-      if (state.currentStep === "start" && state.secondLanguage) {
-        startPhase = "informant";
-      }
-      break;
-    case "cc2-quality":
-      if (id) state = toggleQuality(state, id);
-      break;
-    case "cc2-pain":
-      if (id) state = setPainScore(state, Number(id));
-      break;
-    case "cc2-unknown":
-      state = markChiefComplaint2Unknown(state);
-      break;
-    case "cc2-skip":
-      state = skipChiefComplaint2(state);
-      break;
-    case "cc2-next":
-      state = completeChiefComplaint2(state);
-      break;
-    case "cc2-back":
-      state = goBackFromChiefComplaint2(state);
-      break;
-    case "ccd-time":
-      if (id) state = selectTimeBucket(state, id);
-      break;
-    case "ccd-time-unit":
-      if (id) state = setTimeUnit(state, id);
-      break;
-    case "ccd-unknown":
-      state = markChiefComplaintDurationUnknown(state);
-      break;
-    case "ccd-skip":
-      state = skipChiefComplaintDuration(state);
-      break;
-    case "ccd-next":
-      state = completeChiefComplaintDuration(state);
-      break;
-    case "ccd-back":
-      state = goBackFromChiefComplaintDuration(state);
-      break;
-    case "hist-option": {
-      const step = target.dataset.step;
-      if (step && id && isHistoryStep(step)) {
-        state = toggleListOption(state, step, id);
-      }
-      break;
-    }
-    case "hist-unknown": {
-      const step = target.dataset.step;
-      if (step && isHistoryStep(step)) {
-        state = markListStepUnknown(state, step);
-      }
-      break;
-    }
-    case "hist-skip": {
-      const step = target.dataset.step;
-      if (step && isHistoryStep(step)) {
-        state = skipListStep(state, step);
-      }
-      break;
-    }
-    case "hist-next": {
-      const step = target.dataset.step;
-      if (step && isHistoryStep(step)) {
-        state = completeListStep(state, step);
-      }
-      break;
-    }
-    case "hist-back": {
-      const step = target.dataset.step;
-      if (step && isHistoryStep(step)) {
-        state = goBackListStep(state, step);
-      }
-      break;
-    }
-    case "hist-goto":
-      if (id && isHistoryStep(id)) {
-        state = goToStep(state, id);
-      }
-      break;
-    case "sense-symptom":
-      if (id) state = toggleAccompanyingSymptom(state, id);
-      break;
-    case "sense-body":
-      if (id) state = toggleOtherBodyRegion(state, id);
-      break;
-    case "sense-sub":
-      if (id) state = toggleOtherBodySubregion(state, id);
-      break;
-    case "sense-drill-done":
-      state = clearOtherBodyDrilldown(state);
-      break;
-    case "sense-unknown":
-      state = markOtherSymptomsUnknown(state);
-      break;
-    case "sense-skip":
-      state = skipOtherSymptoms(state);
-      break;
-    case "sense-next":
-      state = completeOtherSymptoms(state);
-      break;
-    case "sense-back":
-      state = goBackFromOtherSymptoms(state);
-      break;
-    case "summary-edit":
-      if (id && isInterviewStep(id)) {
-        state = editFromSummary(state, id);
-        if (id === "start" && state.secondLanguage) startPhase = "informant";
-      }
-      break;
-    case "summary-return":
-      state = returnToSummaryView(state);
-      break;
-    case "summary-finish":
-      state = finishCase(state);
-      startPhase = "language";
-      break;
-    case "summary-copy": {
-      const text = formatSummaryText(state);
-      void navigator.clipboard.writeText(text).then(
-        () => {
-          const el = app!.querySelector<HTMLElement>("[data-copy-status]");
-          if (el) {
-            el.hidden = false;
-            el.textContent = "已複製到剪貼簿";
-          }
-        },
-        () => {
-          const el = app!.querySelector<HTMLElement>("[data-copy-status]");
-          if (el) {
-            el.hidden = false;
-            el.textContent = "複製失敗，請手動選取摘要文字";
-          }
-        },
-      );
-      return;
-    }
-    default:
-      return;
+  if (action === "summary-copy") {
+    const text = formatSummaryText(state);
+    void navigator.clipboard.writeText(text).then(
+      () => {
+        const el = app!.querySelector<HTMLElement>("[data-copy-status]");
+        if (el) {
+          el.hidden = false;
+          el.textContent = "已複製到剪貼簿";
+        }
+      },
+      () => {
+        const el = app!.querySelector<HTMLElement>("[data-copy-status]");
+        if (el) {
+          el.hidden = false;
+          el.textContent = "複製失敗，請手動選取摘要文字";
+        }
+      },
+    );
+    return;
   }
 
+  const intent = toIntent(action, target.dataset.id, target.dataset.step);
+  if (!intent) return;
+  state = apply(state, intent);
   render();
 });
 
@@ -1258,14 +1171,18 @@ function refreshDurationNextAndPreview(): void {
     "button[data-action='ccd-next']",
   );
   if (nextBtn) {
-    nextBtn.disabled = !canCompleteChiefComplaintDuration(state);
+    nextBtn.disabled = !viewFacts(state).gate.nextEnabled;
   }
-  const detail = getChiefComplaint2Detail(state);
+  const detail = getChiefComplaintDurationDetail(state);
   const preview = app!.querySelector(".duration-preview");
   if (!preview) return;
   const lang = secondLang();
-  const previewLabel = bilingualPair(UI_COPY.cc2DurationPreview, lang);
-  const about = bilingualPair(UI_COPY.cc2DurationAbout, lang);
+  const previewLabel = bilingualInline(
+    UI_COPY.ccDurationPreview,
+    lang,
+    INTERVIEW_PRIMACY,
+  );
+  const about = bilingualInline(UI_COPY.ccDurationAbout, lang, INTERVIEW_PRIMACY);
   if (detail.timeAmount && detail.timeUnit) {
     const zh = formatApproxDuration(
       detail.timeAmount,
@@ -1279,15 +1196,15 @@ function refreshDurationNextAndPreview(): void {
     );
     preview.classList.remove("is-empty");
     preview.innerHTML = `
-      <span class="preview-label">${previewLabel.other} · ${previewLabel.zh}</span>
+      <span class="preview-label">${previewLabel.primary} · ${previewLabel.secondary}</span>
       <span class="zh">${other}</span>
       <span class="sub">${zh}</span>
     `;
   } else {
     preview.classList.add("is-empty");
     preview.innerHTML = `
-      <span class="preview-label">${previewLabel.other} · ${previewLabel.zh}</span>
-      <span class="zh">${about.other} ＿＿</span>
+      <span class="preview-label">${previewLabel.primary} · ${previewLabel.secondary}</span>
+      <span class="zh">${about.primary} ＿＿</span>
       <span class="sub">約＿＿分鐘／小時／日</span>
     `;
   }
@@ -1311,34 +1228,29 @@ function refreshDurationNextAndPreview(): void {
 
 app.addEventListener("input", (event) => {
   const target = event.target as HTMLInputElement;
-  if (target.matches("input[data-action='ccd-time-amount']")) {
-    state = setTimeAmount(state, target.value);
+  const action = target.dataset.action;
+  if (!action) return;
+
+  const intent = toIntent(action, target.dataset.id, target.dataset.step, target.value);
+  if (!intent) return;
+  state = apply(state, intent);
+
+  if (action === "ccd-time-amount" || action === "ccd-refine") {
     refreshDurationNextAndPreview();
-    return;
-  }
-
-  if (target.matches("input[data-action='ccd-refine']")) {
-    state = setTimeRefine(state, target.value);
-    const nextBtn = app!.querySelector<HTMLButtonElement>(
-      "button[data-action='ccd-next']",
-    );
-    if (nextBtn) {
-      nextBtn.disabled = !canCompleteChiefComplaintDuration(state);
-    }
-    return;
-  }
-
-  if (target.matches("input[data-action='hist-note']")) {
-    const step = target.dataset.step;
-    if (step && isHistoryStep(step)) {
-      state = setListNote(state, step, target.value);
+    if (action === "ccd-refine") {
       const nextBtn = app!.querySelector<HTMLButtonElement>(
-        "button[data-action='hist-next']",
+        "button[data-action='ccd-next']",
       );
-      if (nextBtn) {
-        nextBtn.disabled = !canCompleteListStep(state, step);
-      }
+      if (nextBtn) nextBtn.disabled = !viewFacts(state).gate.nextEnabled;
     }
+    return;
+  }
+
+  if (action === "hist-note") {
+    const nextBtn = app!.querySelector<HTMLButtonElement>(
+      "button[data-action='hist-next']",
+    );
+    if (nextBtn) nextBtn.disabled = !viewFacts(state).gate.nextEnabled;
   }
 });
 

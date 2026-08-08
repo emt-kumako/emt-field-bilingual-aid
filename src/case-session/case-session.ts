@@ -20,6 +20,7 @@ export function createCase(): CaseState {
     secondLanguage: null,
     informant: null,
     informantHistory: [],
+    startPhase: "language",
     currentStep: "start",
     answers: {},
     returnToSummary: false,

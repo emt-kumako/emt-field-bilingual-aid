@@ -1,5 +1,13 @@
-import { getBodyRegion } from "../catalog/chief-complaint-1.js";
-import { getAccompanyingSymptom } from "../catalog/other-symptoms.js";
+import {
+  ACCOMPANYING_SYMPTOMS,
+  getAccompanyingSymptom,
+} from "../catalog/other-symptoms.js";
+import {
+  clearDrilldown,
+  toggleRegion,
+  toggleSubregion,
+} from "./body-selection.js";
+import { nextSelectedIds } from "./option-selection.js";
 import {
   type CaseState,
   type OtherSymptomsDetail,
@@ -51,10 +59,14 @@ export function toggleAccompanyingSymptom(
   if (!option) return state;
 
   const detail = readDetail(state);
-  let symptomIds = [...detail.symptomIds];
+  const symptomIds = nextSelectedIds(
+    detail.symptomIds,
+    ACCOMPANYING_SYMPTOMS,
+    symptomId,
+  );
 
+  // Exclusive symptoms clear body selection (step policy — not Option selection).
   if (option.exclusive) {
-    symptomIds = symptomIds.includes(symptomId) ? [] : [symptomId];
     return writeDetail(state, {
       symptomIds,
       bodyRegionIds: [],
@@ -63,16 +75,9 @@ export function toggleAccompanyingSymptom(
     });
   }
 
-  const withoutExclusive = symptomIds.filter((id) => {
-    return !getAccompanyingSymptom(id)?.exclusive;
-  });
-  const set = new Set(withoutExclusive);
-  if (set.has(symptomId)) set.delete(symptomId);
-  else set.add(symptomId);
-
   return writeDetail(state, {
     ...detail,
-    symptomIds: [...set],
+    symptomIds,
   });
 }
 
@@ -81,33 +86,13 @@ export function toggleOtherBodyRegion(
   regionId: string,
 ): CaseState {
   const detail = readDetail(state);
+  // Exclusive accompanying symptom locks the body map (step policy).
   if (detail.symptomIds.some((id) => getAccompanyingSymptom(id)?.exclusive)) {
     return state;
   }
-
-  const region = getBodyRegion(regionId);
-  if (!region) return state;
-
-  const selected = new Set(detail.bodyRegionIds);
-  if (selected.has(regionId)) {
-    selected.delete(regionId);
-    const subIds = new Set(region.subregions.map((s) => s.id));
-    return writeDetail(state, {
-      ...detail,
-      bodyRegionIds: [...selected],
-      bodySubregionIds: detail.bodySubregionIds.filter((id) => !subIds.has(id)),
-      drilldownRegionId:
-        detail.drilldownRegionId === regionId ? null : detail.drilldownRegionId,
-    });
-  }
-
-  selected.add(regionId);
-  return writeDetail(state, {
-    ...detail,
-    bodyRegionIds: [...selected],
-    drilldownRegionId:
-      region.subregions.length > 0 ? regionId : detail.drilldownRegionId,
-  });
+  const next = toggleRegion(detail, regionId);
+  if (!next) return state;
+  return writeDetail(state, { ...detail, ...next });
 }
 
 export function toggleOtherBodySubregion(
@@ -115,18 +100,15 @@ export function toggleOtherBodySubregion(
   subregionId: string,
 ): CaseState {
   const detail = readDetail(state);
-  const set = new Set(detail.bodySubregionIds);
-  if (set.has(subregionId)) set.delete(subregionId);
-  else set.add(subregionId);
   return writeDetail(state, {
     ...detail,
-    bodySubregionIds: [...set],
+    ...toggleSubregion(detail, subregionId),
   });
 }
 
 export function clearOtherBodyDrilldown(state: CaseState): CaseState {
   const detail = readDetail(state);
-  return writeDetail(state, { ...detail, drilldownRegionId: null });
+  return writeDetail(state, { ...detail, ...clearDrilldown(detail) });
 }
 
 export function markOtherSymptomsUnknown(state: CaseState): CaseState {

@@ -1,30 +1,15 @@
 import {
   formatApproxDuration,
-  getQualityOption,
   getTimeBucket,
   getTimeUnit,
-} from "../catalog/chief-complaint-2.js";
-import { getChiefComplaint1Detail } from "./chief-complaint-1.js";
+} from "../catalog/chief-complaint-duration.js";
 import {
   type CaseState,
-  type ChiefComplaint2Detail,
-  type ChiefComplaintCombinedDetail,
   type ChiefComplaintDurationDetail,
   type SecondLanguage,
-  emptyChiefComplaint2Detail,
   emptyChiefComplaintDurationDetail,
   emptyStepAnswer,
 } from "./types.js";
-
-function readQuality(state: CaseState): ChiefComplaint2Detail {
-  const answer = state.answers.chief_complaint_2;
-  if (!answer) return emptyChiefComplaint2Detail();
-  const d = answer.detail as Partial<ChiefComplaint2Detail>;
-  return {
-    qualityIds: d.qualityIds ?? [],
-    painScore: typeof d.painScore === "number" ? d.painScore : null,
-  };
-}
 
 function readDuration(state: CaseState): ChiefComplaintDurationDetail {
   const answer = state.answers.chief_complaint_duration;
@@ -49,27 +34,6 @@ function hasDurationInput(detail: ChiefComplaintDurationDetail): boolean {
   );
 }
 
-function writeQuality(
-  state: CaseState,
-  detail: ChiefComplaint2Detail,
-): CaseState {
-  const hasContent =
-    detail.qualityIds.length > 0 || detail.painScore !== null;
-
-  return {
-    ...state,
-    answers: {
-      ...state.answers,
-      chief_complaint_2: {
-        ...emptyStepAnswer(),
-        status: hasContent ? "answered" : "empty",
-        optionIds: [...detail.qualityIds],
-        detail: { ...detail },
-      },
-    },
-  };
-}
-
 function writeDuration(
   state: CaseState,
   detail: ChiefComplaintDurationDetail,
@@ -92,13 +56,6 @@ function writeDuration(
   };
 }
 
-/** Combined quality + duration detail (summary / bilingual preview). */
-export function getChiefComplaint2Detail(
-  state: CaseState,
-): ChiefComplaintCombinedDetail {
-  return { ...readQuality(state), ...readDuration(state) };
-}
-
 export function getChiefComplaintDurationDetail(
   state: CaseState,
 ): ChiefComplaintDurationDetail {
@@ -119,34 +76,6 @@ export function formatDurationForLang(
     return lang === "zh" ? labels.zh : labels[lang];
   }
   return "";
-}
-
-/** Pain scale only when 主訴 step 1 includes pain. */
-export function showsPainScale(state: CaseState): boolean {
-  return getChiefComplaint1Detail(state).complaintTypeIds.includes("pain");
-}
-
-export function toggleQuality(state: CaseState, qualityId: string): CaseState {
-  const option = getQualityOption(qualityId);
-  if (!option) return state;
-
-  const detail = readQuality(state);
-  const set = new Set(detail.qualityIds);
-
-  if (option.exclusive) {
-    if (set.has(qualityId) && set.size === 1) {
-      return writeQuality(state, { ...detail, qualityIds: [] });
-    }
-    return writeQuality(state, { ...detail, qualityIds: [qualityId] });
-  }
-
-  set.delete("same_as_complaint");
-  for (const id of [...set]) {
-    if (getQualityOption(id)?.exclusive) set.delete(id);
-  }
-  if (set.has(qualityId)) set.delete(qualityId);
-  else set.add(qualityId);
-  return writeQuality(state, { ...detail, qualityIds: [...set] });
 }
 
 export function selectTimeBucket(state: CaseState, bucketId: string): CaseState {
@@ -202,50 +131,6 @@ export function setTimeRefine(state: CaseState, timeRefine: string): CaseState {
   });
 }
 
-export function setPainScore(state: CaseState, score: number): CaseState {
-  if (!showsPainScale(state)) return state;
-  if (!Number.isInteger(score) || score < 1 || score > 10) return state;
-  return writeQuality(state, {
-    ...readQuality(state),
-    painScore: score,
-  });
-}
-
-export function clearPainScore(state: CaseState): CaseState {
-  return writeQuality(state, {
-    ...readQuality(state),
-    painScore: null,
-  });
-}
-
-export function markChiefComplaint2Unknown(state: CaseState): CaseState {
-  return {
-    ...state,
-    answers: {
-      ...state.answers,
-      chief_complaint_2: {
-        ...emptyStepAnswer(),
-        status: "unknown",
-        detail: emptyChiefComplaint2Detail(),
-      },
-    },
-  };
-}
-
-export function skipChiefComplaint2(state: CaseState): CaseState {
-  return {
-    ...state,
-    answers: {
-      ...state.answers,
-      chief_complaint_2: {
-        ...emptyStepAnswer(),
-        status: "skipped",
-        detail: emptyChiefComplaint2Detail(),
-      },
-    },
-  };
-}
-
 export function markChiefComplaintDurationUnknown(state: CaseState): CaseState {
   return {
     ...state,
@@ -274,15 +159,6 @@ export function skipChiefComplaintDuration(state: CaseState): CaseState {
   };
 }
 
-export function canCompleteChiefComplaint2(state: CaseState): boolean {
-  const answer = state.answers.chief_complaint_2;
-  if (!answer) return false;
-  if (answer.status === "unknown" || answer.status === "skipped") return true;
-  if (answer.status !== "answered") return false;
-  const detail = readQuality(state);
-  return detail.qualityIds.length > 0 || detail.painScore !== null;
-}
-
 export function canCompleteChiefComplaintDuration(state: CaseState): boolean {
   const answer = state.answers.chief_complaint_duration;
   if (!answer) return false;
@@ -292,33 +168,12 @@ export function canCompleteChiefComplaintDuration(state: CaseState): boolean {
   return detail.timeBucketId !== null || hasDurationInput(detail);
 }
 
-/** Finish 怎麼不舒服 → 多久了. */
-export function completeChiefComplaint2(state: CaseState): CaseState {
-  if (!canCompleteChiefComplaint2(state)) return state;
-
-  const status = state.answers.chief_complaint_2?.status;
-  if (status === "unknown" || status === "skipped") {
-    return { ...state, currentStep: "chief_complaint_duration" };
-  }
-
-  let next = state;
-  if (!showsPainScale(state) && readQuality(state).painScore !== null) {
-    next = clearPainScore(state);
-  }
-
-  return { ...next, currentStep: "chief_complaint_duration" };
-}
-
 /** Finish 多久了 → 之前. */
 export function completeChiefComplaintDuration(state: CaseState): CaseState {
   if (!canCompleteChiefComplaintDuration(state)) return state;
   return { ...state, currentStep: "before" };
 }
 
-export function goBackFromChiefComplaint2(state: CaseState): CaseState {
-  return { ...state, currentStep: "chief_complaint_1" };
-}
-
 export function goBackFromChiefComplaintDuration(state: CaseState): CaseState {
-  return { ...state, currentStep: "chief_complaint_2" };
+  return { ...state, currentStep: "chief_complaint_quality" };
 }

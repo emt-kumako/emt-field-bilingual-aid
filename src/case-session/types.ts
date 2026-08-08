@@ -13,11 +13,25 @@ export type SecondLanguage =
 
 export type Informant = "self" | "family" | "friend" | "other";
 
+/** Two-page prelude before the chief-complaint interview. */
+export type StartPhase = "language" | "informant";
+
+/** Soft gate: why Next stays disabled. UI maps to copy. */
+export type GateReason =
+  | "need_second_language"
+  | "need_informant"
+  | "need_complaint_type"
+  | "need_body_location"
+  | "need_quality_or_pain"
+  | "need_duration"
+  | "need_list_selection"
+  | "need_other_symptom_or_body";
+
 /** Interview mnemonic steps after start. */
 export type InterviewStep =
   | "start"
   | "chief_complaint_1"
-  | "chief_complaint_2"
+  | "chief_complaint_quality"
   | "chief_complaint_duration"
   | "before"
   | "intake"
@@ -57,14 +71,14 @@ export function emptyChiefComplaint1Detail(): ChiefComplaint1Detail {
   };
 }
 
-/** 主訴「怎麼不舒服」payload in answers.chief_complaint_2.detail */
-export type ChiefComplaint2Detail = {
+/** 主訴「怎麼不舒服」payload in answers.chief_complaint_quality.detail */
+export type ChiefComplaintQualityDetail = {
   qualityIds: string[];
   /** 1–10 when pain; otherwise null. */
   painScore: number | null;
 };
 
-export function emptyChiefComplaint2Detail(): ChiefComplaint2Detail {
+export function emptyChiefComplaintQualityDetail(): ChiefComplaintQualityDetail {
   return {
     qualityIds: [],
     painScore: null,
@@ -87,17 +101,6 @@ export function emptyChiefComplaintDurationDetail(): ChiefComplaintDurationDetai
     timeAmount: null,
     timeUnit: null,
     timeRefine: "",
-  };
-}
-
-/** Combined view for summary / UI that needs quality + duration together. */
-export type ChiefComplaintCombinedDetail = ChiefComplaint2Detail &
-  ChiefComplaintDurationDetail;
-
-export function emptyChiefComplaintCombinedDetail(): ChiefComplaintCombinedDetail {
-  return {
-    ...emptyChiefComplaint2Detail(),
-    ...emptyChiefComplaintDurationDetail(),
   };
 }
 
@@ -124,6 +127,8 @@ export type CaseState = {
   informant: Informant | null;
   /** Informant history for mid-case changes (simple audit for summary). */
   informantHistory: Informant[];
+  /** Prelude page when currentStep === "start". */
+  startPhase: StartPhase;
   currentStep: InterviewStep;
   answers: Partial<Record<InterviewStep, StepAnswer>>;
   /** When true, editing from summary; primary action returns to summary. */

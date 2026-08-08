@@ -1,7 +1,9 @@
+import { complaintTypesNeedBody } from "../catalog/chief-complaint-1.js";
 import {
-  complaintTypesNeedBody,
-  getBodyRegion,
-} from "../catalog/chief-complaint-1.js";
+  clearDrilldown,
+  toggleRegion,
+  toggleSubregion,
+} from "./body-selection.js";
 import {
   type CaseState,
   type ChiefComplaint1Detail,
@@ -63,46 +65,22 @@ export function toggleComplaintType(state: CaseState, complaintTypeId: string): 
 
 export function toggleBodyRegion(state: CaseState, regionId: string): CaseState {
   const detail = readDetail(state);
-
-  const region = getBodyRegion(regionId);
-  if (!region) return state;
-
-  const selected = new Set(detail.bodyRegionIds);
-  if (selected.has(regionId)) {
-    selected.delete(regionId);
-    const subIds = new Set(region.subregions.map((s) => s.id));
-    return writeDetail(state, {
-      ...detail,
-      bodyRegionIds: [...selected],
-      bodySubregionIds: detail.bodySubregionIds.filter((id) => !subIds.has(id)),
-      drilldownRegionId:
-        detail.drilldownRegionId === regionId ? null : detail.drilldownRegionId,
-    });
-  }
-
-  selected.add(regionId);
-  return writeDetail(state, {
-    ...detail,
-    bodyRegionIds: [...selected],
-    drilldownRegionId:
-      region.subregions.length > 0 ? regionId : detail.drilldownRegionId,
-  });
+  const next = toggleRegion(detail, regionId);
+  if (!next) return state;
+  return writeDetail(state, { ...detail, ...next });
 }
 
 export function toggleBodySubregion(state: CaseState, subregionId: string): CaseState {
   const detail = readDetail(state);
-  const set = new Set(detail.bodySubregionIds);
-  if (set.has(subregionId)) set.delete(subregionId);
-  else set.add(subregionId);
   return writeDetail(state, {
     ...detail,
-    bodySubregionIds: [...set],
+    ...toggleSubregion(detail, subregionId),
   });
 }
 
 export function clearBodyDrilldown(state: CaseState): CaseState {
   const detail = readDetail(state);
-  return writeDetail(state, { ...detail, drilldownRegionId: null });
+  return writeDetail(state, { ...detail, ...clearDrilldown(detail) });
 }
 
 export function markChiefComplaint1Unknown(state: CaseState): CaseState {
@@ -153,13 +131,13 @@ export function completeChiefComplaint1(state: CaseState): CaseState {
 
   const status = state.answers.chief_complaint_1?.status;
   if (status === "unknown" || status === "skipped") {
-    return { ...state, currentStep: "chief_complaint_2" };
+    return { ...state, currentStep: "chief_complaint_quality" };
   }
 
   const detail = { ...readDetail(state), drilldownRegionId: null };
   return {
     ...writeDetail(state, detail),
-    currentStep: "chief_complaint_2",
+      currentStep: "chief_complaint_quality",
   };
 }
 

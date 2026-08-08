@@ -12,12 +12,14 @@ import {
   toggleComplaintType,
 } from "./chief-complaint-1.js";
 import {
-  completeChiefComplaint2,
   completeChiefComplaintDuration,
   selectTimeBucket,
+} from "./chief-complaint-duration.js";
+import {
+  completeChiefComplaintQuality,
   setPainScore,
   toggleQuality,
-} from "./chief-complaint-2.js";
+} from "./chief-complaint-quality.js";
 import {
   completeListStep,
   markListStepUnknown,
@@ -46,7 +48,7 @@ function finishedCase() {
   state = completeChiefComplaint1(state);
   state = toggleQuality(state, "crushing");
   state = setPainScore(state, 8);
-  state = completeChiefComplaint2(state);
+  state = completeChiefComplaintQuality(state);
   state = selectTimeBucket(state, "about_20_min");
   state = completeChiefComplaintDuration(state);
 
@@ -67,26 +69,31 @@ function finishedCase() {
 }
 
 describe("summary + clear", () => {
-  it("builds Chinese-primary summary with obtained vs not-obtained", () => {
+  it("builds bilingual summary for display; copy text stays Chinese", () => {
     const state = finishedCase();
     const sections = buildSummarySections(state);
     const byKey = Object.fromEntries(sections.map((s) => [s.key, s]));
 
-    expect(byKey.informant?.value).toContain("本人");
-    expect(byKey.informant?.value).toContain("家屬 → 本人");
+    expect(byKey.informant?.value.zh).toContain("本人");
+    expect(byKey.informant?.value.zh).toContain("家屬 → 本人");
+    expect(byKey.informant?.value.other).toContain("Patient");
     expect(byKey.chief?.obtained).toBe(true);
-    expect(byKey.chief?.value).toContain("疼痛");
-    expect(byKey.chief?.value).toContain("痛尺：8/10");
-    expect(byKey.chief?.editStep).toBe("chief_complaint_2");
+    expect(byKey.chief?.value.zh).toContain("疼痛");
+    expect(byKey.chief?.value.zh).toContain("痛尺：8/10");
+    expect(byKey.chief?.value.other).toMatch(/Pain|pain/i);
+    expect(byKey.chief?.editStep).toBe("chief_complaint_quality");
     expect(byKey.past_history?.obtained).toBe(false);
-    expect(byKey.past_history?.value).toContain("不知道");
-    expect(byKey.medications?.value).toContain("自備成藥");
-    expect(byKey.other_symptoms?.value).toContain("冒冷汗");
+    expect(byKey.past_history?.value.zh).toContain("不知道");
+    expect(byKey.medications?.value.zh).toContain("自備成藥");
+    expect(byKey.other_symptoms?.value.zh).toContain("冒冷汗");
+    expect(byKey.other_symptoms?.value.other.toLowerCase()).toContain("sweat");
 
     const text = formatSummaryText(state);
     expect(text).toContain("本機摘要");
     expect(text).toContain("非評估或診斷");
     expect(text).toContain("主訴：");
+    expect(text).toContain("疼痛");
+    expect(text).not.toMatch(/Chief complaint:/);
   });
 
   it("supports edit-from-summary return and finishCase clear", () => {

@@ -39,7 +39,7 @@ describe("chief complaint step 1", () => {
     state = clearBodyDrilldown(state);
     state = completeChiefComplaint1(state);
 
-    expect(state.currentStep).toBe("chief_complaint_2");
+    expect(state.currentStep).toBe("chief_complaint_quality");
     expect(getChiefComplaint1Detail(state).complaintTypeIds).toEqual(["pain"]);
     expect(getChiefComplaint1Detail(state).bodyRegionIds).toEqual(["chest"]);
     expect(getChiefComplaint1Detail(state).bodySubregionIds).toEqual([
@@ -59,7 +59,7 @@ describe("chief complaint step 1", () => {
     expect(canCompleteChiefComplaint1(state)).toBe(true);
 
     state = completeChiefComplaint1(state);
-    expect(state.currentStep).toBe("chief_complaint_2");
+    expect(state.currentStep).toBe("chief_complaint_quality");
   });
 
   it("keeps optional body when switching from localized to only non-localized", () => {
@@ -80,12 +80,12 @@ describe("chief complaint step 1", () => {
     expect(unknown.answers.chief_complaint_1?.status).toBe("unknown");
     expect(canCompleteChiefComplaint1(unknown)).toBe(true);
     unknown = completeChiefComplaint1(unknown);
-    expect(unknown.currentStep).toBe("chief_complaint_2");
+    expect(unknown.currentStep).toBe("chief_complaint_quality");
 
     let skipped = skipChiefComplaint1(started());
     expect(skipped.answers.chief_complaint_1?.status).toBe("skipped");
     expect(canCompleteChiefComplaint1(skipped)).toBe(true);
     skipped = completeChiefComplaint1(skipped);
-    expect(skipped.currentStep).toBe("chief_complaint_2");
+    expect(skipped.currentStep).toBe("chief_complaint_quality");
   });
 });

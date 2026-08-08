@@ -5,6 +5,7 @@ import {
   previousHistoryStep,
   type HistoryStepId,
 } from "../catalog/history-block.js";
+import { nextSelectedIds } from "./option-selection.js";
 import {
   type CaseState,
   type InterviewStep,
@@ -64,34 +65,13 @@ export function toggleListOption(
   if (!option) return state;
 
   const current = getAnswer(state, step);
-  let optionIds = [...current.optionIds];
+  const optionIds = nextSelectedIds(
+    current.optionIds,
+    catalog.options,
+    optionId,
+    catalog.selection === "single" ? "single" : "multi",
+  );
   let note = current.note;
-
-  if (catalog.selection === "single") {
-    if (optionIds.includes(optionId) && !option.exclusive) {
-      optionIds = [];
-    } else {
-      optionIds = [optionId];
-    }
-  } else if (option.exclusive) {
-    optionIds = optionIds.includes(optionId) ? [] : [optionId];
-  } else {
-    const withoutExclusive = optionIds.filter((id) => {
-      const opt = catalog.options.find((o) => o.id === id);
-      return !opt?.exclusive;
-    });
-    let next = withoutExclusive;
-    if (option.mutexGroup) {
-      next = next.filter((id) => {
-        const opt = catalog.options.find((o) => o.id === id);
-        return opt?.mutexGroup !== option.mutexGroup;
-      });
-    }
-    const set = new Set(next);
-    if (set.has(optionId)) set.delete(optionId);
-    else set.add(optionId);
-    optionIds = [...set];
-  }
 
   const stillNeedsNote = catalog.options.some(
     (opt) => opt.opensNote && optionIds.includes(opt.id),

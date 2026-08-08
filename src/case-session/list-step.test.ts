@@ -10,11 +10,13 @@ import {
   toggleComplaintType,
 } from "./chief-complaint-1.js";
 import {
-  completeChiefComplaint2,
   completeChiefComplaintDuration,
   selectTimeBucket,
+} from "./chief-complaint-duration.js";
+import {
+  completeChiefComplaintQuality,
   toggleQuality,
-} from "./chief-complaint-2.js";
+} from "./chief-complaint-quality.js";
 import {
   canCompleteListStep,
   completeListStep,
@@ -36,7 +38,7 @@ function atBefore() {
   state = toggleComplaintType(state, "weakness");
   state = completeChiefComplaint1(state);
   state = toggleQuality(state, "same_as_complaint");
-  state = completeChiefComplaint2(state);
+  state = completeChiefComplaintQuality(state);
   state = selectTimeBucket(state, "few_hours");
   return completeChiefComplaintDuration(state);
 }

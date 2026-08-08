@@ -3,11 +3,8 @@ import {
   BODY_REGIONS,
   COMPLAINT_TYPES,
 } from "./chief-complaint-1.js";
-import {
-  QUALITY_OPTIONS,
-  TIME_BUCKETS,
-  TIME_UNITS,
-} from "./chief-complaint-2.js";
+import { QUALITY_OPTIONS } from "./chief-complaint-quality.js";
+import { TIME_BUCKETS, TIME_UNITS } from "./chief-complaint-duration.js";
 import { HISTORY_BLOCK } from "./history-block.js";
 import {
   MissingLocaleError,
@@ -16,6 +13,7 @@ import {
   type BilingualText,
 } from "./labels.js";
 import { ACCOMPANYING_SYMPTOMS } from "./other-symptoms.js";
+import { SUMMARY_COPY } from "./summary-copy.js";
 import { UI_COPY } from "./ui-copy.js";
 import { INFORMANT_OPTIONS } from "../content/start-labels.js";
 
@@ -58,6 +56,9 @@ describe("locale packs", () => {
     }
     for (const [key, text] of Object.entries(UI_COPY)) {
       assertComplete(text, `ui:${key}`);
+    }
+    for (const [key, text] of Object.entries(SUMMARY_COPY)) {
+      assertComplete(text, `summary:${key}`);
     }
     for (const opt of INFORMANT_OPTIONS) {
       assertComplete(opt.labels, `informant:${opt.id}`);

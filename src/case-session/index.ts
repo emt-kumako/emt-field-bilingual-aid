@@ -9,6 +9,26 @@ export {
   withAnswerForTesting,
 } from "./case-session.js";
 export {
+  apply,
+  viewFacts,
+  type GateFacts,
+  type Intent,
+  type ScreenFacts,
+  type Slot,
+  type ViewFacts,
+} from "./session.js";
+export {
+  nextSelectedIds,
+  type OptionMeta,
+  type SelectionMode,
+} from "./option-selection.js";
+export {
+  clearDrilldown,
+  toggleRegion,
+  toggleSubregion,
+  type BodySelection,
+} from "./body-selection.js";
+export {
   canCompleteChiefComplaint1,
   clearBodyDrilldown,
   completeChiefComplaint1,
@@ -22,28 +42,30 @@ export {
   toggleComplaintType,
 } from "./chief-complaint-1.js";
 export {
-  canCompleteChiefComplaint2,
-  canCompleteChiefComplaintDuration,
+  canCompleteChiefComplaintQuality,
   clearPainScore,
-  completeChiefComplaint2,
+  completeChiefComplaintQuality,
+  getChiefComplaintQualityDetail,
+  goBackFromChiefComplaintQuality,
+  markChiefComplaintQualityUnknown,
+  setPainScore,
+  showsPainScale,
+  skipChiefComplaintQuality,
+  toggleQuality,
+} from "./chief-complaint-quality.js";
+export {
+  canCompleteChiefComplaintDuration,
   completeChiefComplaintDuration,
   formatDurationForLang,
-  getChiefComplaint2Detail,
   getChiefComplaintDurationDetail,
-  goBackFromChiefComplaint2,
   goBackFromChiefComplaintDuration,
-  markChiefComplaint2Unknown,
   markChiefComplaintDurationUnknown,
   selectTimeBucket,
-  setPainScore,
   setTimeAmount,
   setTimeRefine,
   setTimeUnit,
-  showsPainScale,
-  skipChiefComplaint2,
   skipChiefComplaintDuration,
-  toggleQuality,
-} from "./chief-complaint-2.js";
+} from "./chief-complaint-duration.js";
 export {
   canCompleteListStep,
   completeListStep,
@@ -76,24 +98,25 @@ export {
   finishCase,
   formatSummaryText,
   returnToSummaryView,
+  type SummaryLine,
   type SummarySection,
 } from "./summary.js";
 export {
   emptyChiefComplaint1Detail,
-  emptyChiefComplaint2Detail,
-  emptyChiefComplaintCombinedDetail,
   emptyChiefComplaintDurationDetail,
+  emptyChiefComplaintQualityDetail,
   emptyOtherSymptomsDetail,
   emptyStepAnswer,
   type AnswerStatus,
   type CaseState,
   type ChiefComplaint1Detail,
-  type ChiefComplaint2Detail,
-  type ChiefComplaintCombinedDetail,
   type ChiefComplaintDurationDetail,
+  type ChiefComplaintQualityDetail,
+  type GateReason,
   type Informant,
   type InterviewStep,
   type OtherSymptomsDetail,
   type SecondLanguage,
+  type StartPhase,
   type StepAnswer,
 } from "./types.js";

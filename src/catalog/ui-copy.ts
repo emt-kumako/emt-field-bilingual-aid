@@ -49,7 +49,7 @@ export const UI_COPY = {
       fr: "(Carte du corps facultative pour cette plainte)",
       es: "(Mapa corporal opcional para esta molestia)",
     }),
-  cc2Title: L("怎麼不舒服？", {
+  ccQualityTitle: L("怎麼不舒服？", {
     en: "How does it feel?",
     vi: "Cảm giác thế nào?",
     id: "Rasanya bagaimana?",
@@ -61,7 +61,7 @@ export const UI_COPY = {
       fr: "Quelle sensation ?",
       es: "¿Cómo se siente?",
     }),
-  cc2Quality: L("性質", {
+  ccQuality: L("性質", {
     en: "Quality",
     vi: "Tính chất",
     id: "Sifat keluhan",
@@ -85,7 +85,7 @@ export const UI_COPY = {
       fr: "Depuis combien de temps ?",
       es: "¿Desde cuándo?",
     }),
-  cc2Duration: L("多久了 · 時長", {
+  ccDuration: L("多久了 · 時長", {
     en: "How long · Duration",
     vi: "Bao lâu",
     id: "Durasi",
@@ -121,7 +121,7 @@ export const UI_COPY = {
       fr: "Aujourd'hui",
       es: "Hoy",
     }),
-  cc2DurationAbout: L("約", {
+  ccDurationAbout: L("約", {
     en: "About",
     vi: "Khoảng",
     id: "Sekitar",
@@ -133,7 +133,7 @@ export const UI_COPY = {
       fr: "Environ",
       es: "Aproximadamente",
     }),
-  cc2DurationPreview: L("對照顯示", {
+  ccDurationPreview: L("對照顯示", {
     en: "Shown as",
     vi: "Hiển thị",
     id: "Ditampilkan",
@@ -145,7 +145,7 @@ export const UI_COPY = {
       fr: "Affiché comme",
       es: "Se muestra como",
     }),
-  cc2Period: L("或時段", {
+  ccPeriod: L("或時段", {
     en: "Or period",
     vi: "Hoặc khoảng thời gian",
     id: "Atau periode",
@@ -157,7 +157,7 @@ export const UI_COPY = {
       fr: "Ou période",
       es: "O periodo",
     }),
-  cc2Pain: L("疼痛指數 · Pain 1–10", {
+  ccPain: L("疼痛指數 · Pain 1–10", {
     en: "Pain score 1–10",
     vi: "Mức đau 1–10",
     id: "Skala nyeri 1–10",

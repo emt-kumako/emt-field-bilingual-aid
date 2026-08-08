@@ -16,6 +16,7 @@ describe("CaseSession", () => {
 
     expect(state.id).toMatch(/^case-\d+$/);
     expect(state.currentStep).toBe("start");
+    expect(state.startPhase).toBe("language");
     expect(state.secondLanguage).toBeNull();
     expect(state.informant).toBeNull();
     expect(state.informantHistory).toEqual([]);
@@ -44,6 +45,7 @@ describe("CaseSession", () => {
 
     expect(next.id).not.toBe(dirty.id);
     expect(next.currentStep).toBe("start");
+    expect(next.startPhase).toBe("language");
     expect(next.secondLanguage).toBeNull();
     expect(next.informant).toBeNull();
     expect(next.informantHistory).toEqual([]);
