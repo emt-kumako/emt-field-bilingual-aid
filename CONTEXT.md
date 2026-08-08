@@ -13,8 +13,8 @@ The two-page prelude before the chief-complaint interview: choose second languag
 _Avoid_: Onboarding, wizard, splash
 
 **Informant**:
-Who is answering the interview questions (patient, family, someone present, or other).
-_Avoid_: Respondent, user, speaker
+Who is answering the interview questions (patient, family, friend, or other). Chinese label for friend is「朋友(友人)」.
+_Avoid_: Respondent, user, speaker, 有人 (as the friend option)
 
 **Gate reason**:
 A stable code naming why the current step cannot advance yet; UI maps it to copy. Soft only: Next may stay disabled, Back / unknown / skip stay available.

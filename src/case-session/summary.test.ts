@@ -90,7 +90,8 @@ describe("summary + clear", () => {
 
     const text = formatSummaryText(state);
     expect(text).toContain("本機摘要");
-    expect(text).toContain("非評估或診斷");
+    expect(text).not.toContain("非評估或診斷");
+    expect(text).not.toContain("張小熊");
     expect(text).toContain("主訴：");
     expect(text).toContain("疼痛");
     expect(text).not.toMatch(/Chief complaint:/);

@@ -54,17 +54,17 @@ export const INFORMANT_OPTIONS: {
   },
   {
     id: "friend",
-    labels: L("有人", {
-      en: "Someone else",
-      vi: "Có người khác",
-      id: "Seseorang",
-      ja: "誰か",
-      ko: "누군가",
-      fil: "May tao",
-      th: "มีคน",
-      de: "Jemand anderes",
-      fr: "Quelqu'un d'autre",
-      es: "Alguien más",
+    labels: L("朋友(友人)", {
+      en: "Friend",
+      vi: "Bạn bè",
+      id: "Teman",
+      ja: "友人",
+      ko: "친구",
+      fil: "Kaibigan",
+      th: "เพื่อน",
+      de: "Freund/in",
+      fr: "Ami(e)",
+      es: "Amigo/a",
     }),
   },
   {

@@ -14,7 +14,6 @@ import { getAccompanyingSymptom } from "../catalog/other-symptoms.js";
 import { SUMMARY_COPY } from "../catalog/summary-copy.js";
 import { UI_COPY } from "../catalog/ui-copy.js";
 import { INFORMANT_OPTIONS } from "../content/start-labels.js";
-import { DISCLAIMER_ZH } from "../content/disclaimer.js";
 import { getChiefComplaint1Detail } from "./chief-complaint-1.js";
 import { getChiefComplaintQualityDetail } from "./chief-complaint-quality.js";
 import { getChiefComplaintDurationDetail } from "./chief-complaint-duration.js";
@@ -441,7 +440,6 @@ export function buildSummarySections(state: CaseState): SummarySection[] {
 export function formatSummaryText(state: CaseState): string {
   const lines = [
     "【救護現場雙語溝通輔助 · 本機摘要】",
-    DISCLAIMER_ZH,
     "",
     ...buildSummarySections(state).map((s) => `${s.label.zh}：${s.value.zh}`),
   ];
