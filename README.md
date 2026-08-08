@@ -10,6 +10,13 @@ npm test
 npm run dev
 ```
 
+## GitHub Pages
+
+站點：https://emt-kumako.github.io/emt-field-bilingual-aid/
+
+推送到 `main` 後，Actions 會 `npm run build` 並部署 `dist/`。  
+本機預覽仍用相對路徑；Pages 建置會設 `VITE_BASE=/emt-field-bilingual-aid/`。
+
 ## 離線／安裝驗證（ticket 07）
 
 1. `npm run build && npm run preview`
