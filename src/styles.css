@@ -610,6 +610,192 @@ button.ghost {
   font-size: 0.9rem;
 }
 
+/* Phone: readable stacked layout; content scrolls inside the shell. */
+@media (max-width: 767.98px) {
+  :root {
+    --footer-h: auto;
+    --touch: 2.85rem;
+    font-size: 15px;
+  }
+
+  #app {
+    padding: 0.55rem max(0.75rem, env(safe-area-inset-right, 0px)) 0
+      max(0.75rem, env(safe-area-inset-left, 0px));
+  }
+
+  .screen {
+    gap: 0.45rem;
+  }
+
+  .screen-main {
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    gap: 0.7rem;
+    padding-bottom: 0.15rem;
+  }
+
+  .screen-chrome {
+    padding-top: 0.15rem;
+    border-top: 1px solid rgba(197, 212, 219, 0.55);
+    background: linear-gradient(
+      180deg,
+      rgba(232, 238, 241, 0) 0%,
+      rgba(232, 238, 241, 0.55) 35%,
+      transparent 100%
+    );
+  }
+
+  .brand-header {
+    padding-left: 0.7rem;
+  }
+
+  .brand-kicker {
+    letter-spacing: 0.1em;
+    font-size: 0.68rem;
+  }
+
+  .brand-title-main {
+    font-size: clamp(1.4rem, 7vw, 1.85rem);
+    letter-spacing: 0.06em;
+  }
+
+  .brand-title-sub {
+    font-size: clamp(1rem, 4.6vw, 1.25rem);
+    letter-spacing: 0.12em;
+  }
+
+  .lead {
+    font-size: 0.88rem;
+  }
+
+  .split-panels {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    gap: 0.8rem;
+  }
+
+  .section.grow,
+  .section.grow > .option-grid,
+  .section.grow > .body-map {
+    flex: 0 0 auto;
+  }
+
+  .fill-grid {
+    grid-auto-rows: auto;
+  }
+
+  .option-grid {
+    gap: 0.5rem;
+  }
+
+  .option-grid.cols-3 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .twin-sections {
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+  }
+
+  button.option {
+    min-height: 3.35rem;
+    height: auto;
+    padding: 0.55rem 0.7rem;
+  }
+
+  button.option .zh {
+    font-size: 1.05rem;
+  }
+
+  button.option .sub {
+    font-size: 0.86rem;
+  }
+
+  .body-map {
+    flex: 0 0 auto;
+    height: min(52vh, 22rem);
+    min-height: 16.5rem;
+  }
+
+  .body-hotspot {
+    padding: 0.3rem 0.25rem;
+  }
+
+  .body-hotspot .zh {
+    font-size: 0.88rem;
+  }
+
+  .body-hotspot .sub {
+    font-size: 0.72rem;
+  }
+
+  .actions {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .step-nav {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-bottom: 0.1rem;
+  }
+
+  .summary-list {
+    grid-auto-rows: auto;
+    gap: 0.45rem;
+  }
+
+  .summary-row {
+    height: auto;
+    min-height: 3.1rem;
+    grid-template-columns: 3.4rem 1fr auto;
+    padding: 0.55rem 0.65rem;
+    align-items: start;
+  }
+
+  .summary-value {
+    -webkit-line-clamp: 3;
+  }
+
+  .site-footer {
+    align-items: flex-end;
+    gap: 0.4rem 0.65rem;
+  }
+
+  .footer-disclaimer {
+    font-size: 0.68rem;
+    line-height: 1.4;
+    min-width: 0;
+  }
+
+  .footer-logo {
+    width: min(5.2rem, 28vw);
+  }
+}
+
+@media (max-width: 767.98px) and (orientation: landscape) {
+  .brand-title-main {
+    font-size: 1.25rem;
+  }
+
+  .brand-title-sub {
+    font-size: 0.95rem;
+  }
+
+  .body-map {
+    height: min(70vh, 18rem);
+    min-height: 14rem;
+  }
+
+  .lead,
+  .brand-kicker {
+    display: none;
+  }
+}
+
 @media (min-width: 768px) {
   #app {
     padding: 0.75rem 1.25rem 0;
@@ -650,7 +836,8 @@ button.ghost {
   }
 }
 
-@media (max-height: 720px) {
+/* Short tablet / desktop windows only — keep bilingual labels on phones. */
+@media (max-height: 720px) and (min-width: 768px) {
   .lead {
     display: none;
   }
