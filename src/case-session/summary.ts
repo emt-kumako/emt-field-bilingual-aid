@@ -12,6 +12,7 @@ import { getAccompanyingSymptom } from "../catalog/other-symptoms.js";
 import { getChiefComplaint1Detail } from "./chief-complaint-1.js";
 import { getChiefComplaint2Detail } from "./chief-complaint-2.js";
 import { getOtherSymptomsDetail } from "./other-symptoms.js";
+import { DISCLAIMER_ZH } from "../content/disclaimer.js";
 import {
   type CaseState,
   type Informant,
@@ -280,7 +281,7 @@ export function buildSummarySections(state: CaseState): SummarySection[] {
 export function formatSummaryText(state: CaseState): string {
   const lines = [
     "【救護現場雙語溝通輔助 · 本機摘要】",
-    "本工具為救護現場雙語溝通輔助，非評估或診斷；臨床判斷仍由救護人員負責。",
+    DISCLAIMER_ZH,
     "",
     ...buildSummarySections(state).map(
       (s) => `${s.label}：${s.value}${s.obtained ? "" : ""}`,

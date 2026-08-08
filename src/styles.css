@@ -92,13 +92,8 @@ body {
   gap: 0.75rem;
   min-height: var(--footer-h);
   padding: 0.35rem 0.15rem calc(0.4rem + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid rgba(197, 212, 219, 0.85);
-  background: linear-gradient(
-    180deg,
-    rgba(232, 238, 241, 0.2) 0%,
-    rgba(232, 238, 241, 0.92) 40%,
-    var(--bg) 100%
-  );
+  border-top: none;
+  background: transparent;
 }
 
 .footer-disclaimer {
@@ -113,7 +108,7 @@ body {
 .footer-logo {
   display: block;
   flex: 0 0 auto;
-  width: min(7.5rem, 28vw);
+  width: min(6.4rem, 24vw);
   height: auto;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45))
     drop-shadow(0 1px 0 rgba(0, 0, 0, 0.2));
@@ -124,6 +119,60 @@ h1 {
   margin: 0 0 0.15rem;
   letter-spacing: 0.02em;
   line-height: 1.2;
+}
+
+.brand-header {
+  position: relative;
+  padding: 0.15rem 0 0.35rem 0.85rem;
+}
+
+.brand-header::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.2rem;
+  bottom: 0.45rem;
+  width: 0.28rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    #c9a227 0%,
+    var(--accent) 55%,
+    #143844 100%
+  );
+}
+
+.brand-kicker {
+  margin: 0 0 0.2rem;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.brand-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  margin: 0 0 0.35rem;
+  font-size: inherit;
+  line-height: 1.05;
+}
+
+.brand-title-main {
+  font-size: clamp(1.7rem, 3.4vh + 0.8vw, 2.55rem);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+}
+
+.brand-title-sub {
+  font-size: clamp(1.15rem, 2vh + 0.45vw, 1.55rem);
+  font-weight: 650;
+  letter-spacing: 0.28em;
+  color: var(--accent);
 }
 
 .lead {
@@ -582,11 +631,11 @@ button.ghost {
   }
 
   .footer-logo {
-    width: min(8.5rem, 18vw);
+    width: min(7.2rem, 15vw);
   }
 
   .footer-disclaimer {
-    font-size: 0.84rem;
+    font-size: 0.8rem;
   }
 }
 

@@ -310,11 +310,16 @@ function renderStart(): void {
 
   getView().innerHTML = screenLayout({
     header: `
-      <header class="step-header">
-        <h1>救護現場雙語溝通輔助</h1>
+      <header class="step-header brand-header">
+        <p class="brand-kicker">Zhongxinbei · Field Aid</p>
+        <h1 class="brand-title">
+          <span class="brand-title-main">救護現場</span>
+          <span class="brand-title-sub">雙語溝通輔助</span>
+        </h1>
         <p class="lead">救護人員操作；傷病患／家屬指選。中文為錨，同屏雙語。</p>
       </header>
     `,
+
     body: `
       <section class="section grow">
         <h2>選擇第二語</h2>
