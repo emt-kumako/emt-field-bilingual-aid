@@ -28,6 +28,7 @@ body {
   overscroll-behavior: none;
   -webkit-text-size-adjust: 100%;
   touch-action: manipulation;
+  -ms-touch-action: manipulation;
 }
 
 body {

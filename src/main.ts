@@ -93,6 +93,31 @@ if (!app) {
   throw new Error("#app missing");
 }
 
+/** Keep field tablet layout fixed: block pinch-zoom / ctrl-wheel zoom. */
+function lockPageZoom(): void {
+  const block = (event: Event) => {
+    event.preventDefault();
+  };
+  for (const type of ["gesturestart", "gesturechange", "gestureend"] as const) {
+    document.addEventListener(type, block, { passive: false });
+  }
+  document.addEventListener(
+    "wheel",
+    (event) => {
+      if (event.ctrlKey) event.preventDefault();
+    },
+    { passive: false },
+  );
+  document.addEventListener(
+    "touchmove",
+    (event) => {
+      if (event.touches.length > 1) event.preventDefault();
+    },
+    { passive: false },
+  );
+}
+lockPageZoom();
+
 let state: CaseState = createCase();
 
 function secondLang(): SecondLanguage {
