@@ -11,6 +11,8 @@ self.addEventListener("install", (event) => {
           "./index.html",
           "./manifest.webmanifest",
           "./icons/icon.svg",
+          "./icons/apple-touch-icon.png",
+          "./icons/icon-512.png",
         ]),
       )
       // Hashed JS/CSS are cached on first successful fetch (see fetch handler).

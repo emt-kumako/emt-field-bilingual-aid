@@ -7,24 +7,24 @@ import { QUALITY_OPTIONS, TIME_BUCKETS } from "./chief-complaint-2.js";
 import { HISTORY_BLOCK } from "./history-block.js";
 import {
   MissingLocaleError,
+  SECOND_LANGUAGES,
   bilingualPair,
   type BilingualText,
 } from "./labels.js";
 import { ACCOMPANYING_SYMPTOMS } from "./other-symptoms.js";
 import { UI_COPY } from "./ui-copy.js";
+import { INFORMANT_OPTIONS } from "../content/start-labels.js";
 
 function assertComplete(text: BilingualText, path: string): void {
-  for (const lang of ["zh", "en", "vi", "id"] as const) {
+  expect(text.zh.trim().length, `${path}.zh`).toBeGreaterThan(0);
+  for (const lang of SECOND_LANGUAGES) {
     expect(text[lang]?.trim().length, `${path}.${lang}`).toBeGreaterThan(0);
+    expect(bilingualPair(text, lang).other).toBe(text[lang]);
   }
-  // Resolving vi/id must not throw or silently become English.
-  expect(bilingualPair(text, "vi").other).toBe(text.vi);
-  expect(bilingualPair(text, "id").other).toBe(text.id);
-  expect(bilingualPair(text, "en").other).toBe(text.en);
 }
 
-describe("locale packs vi/id", () => {
-  it("ships complete zh/en/vi/id for all patient-facing catalog strings", () => {
+describe("locale packs", () => {
+  it("ships complete zh + all second languages for patient-facing strings", () => {
     for (const c of COMPLAINT_TYPES) {
       assertComplete(c.labels, `complaint:${c.id}`);
     }
@@ -52,14 +52,21 @@ describe("locale packs vi/id", () => {
     for (const [key, text] of Object.entries(UI_COPY)) {
       assertComplete(text, `ui:${key}`);
     }
+    for (const opt of INFORMANT_OPTIONS) {
+      assertComplete(opt.labels, `informant:${opt.id}`);
+    }
   });
 
   it("fails loudly when a second-language string is missing", () => {
-    const incomplete = {
+    const incomplete: BilingualText = {
       zh: "測試",
       en: "Test",
       vi: "",
       id: "Tes",
+      ja: "テスト",
+      ko: "테스트",
+      fil: "Test",
+      th: "ทดสอบ",
     };
     expect(() => bilingualPair(incomplete, "vi")).toThrow(MissingLocaleError);
   });

@@ -1,20 +1,22 @@
 import type { SecondLanguage } from "../case-session/types.js";
 
-/** Chinese anchor + all MVP second languages required (no silent gaps). */
-export type BilingualText = {
-  zh: string;
-  en: string;
-  vi: string;
-  id: string;
-};
+export const SECOND_LANGUAGES = [
+  "en",
+  "vi",
+  "id",
+  "ja",
+  "ko",
+  "fil",
+  "th",
+] as const satisfies readonly SecondLanguage[];
 
-export function L(
-  zh: string,
-  en: string,
-  vi: string,
-  id: string,
-): BilingualText {
-  return { zh, en, vi, id };
+/** Chinese anchor + every selectable second language (no silent gaps). */
+export type BilingualText = { zh: string } & Record<SecondLanguage, string>;
+
+export type LocalePack = Record<SecondLanguage, string>;
+
+export function L(zh: string, pack: LocalePack): BilingualText {
+  return { zh, ...pack };
 }
 
 export class MissingLocaleError extends Error {
@@ -31,7 +33,7 @@ export class MissingLocaleError extends Error {
 
 /**
  * Chinese + selected second language.
- * Strategy: no silent English fallback for vi/id — missing strings throw.
+ * Strategy: no silent English fallback — missing strings throw.
  */
 export function bilingualPair(
   text: BilingualText,

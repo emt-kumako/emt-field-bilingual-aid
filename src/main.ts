@@ -259,13 +259,13 @@ function renderStart(): void {
   }).join("");
 
   app!.innerHTML = `
-    <h1>現場雙語溝通輔助</h1>
+    <h1>救護現場雙語溝通輔助</h1>
     <p class="lead">救護人員操作；傷病患／家屬指選。中文為錨，同屏雙語。</p>
     <aside class="disclaimer" role="note">${DISCLAIMER_ZH}</aside>
 
     <section class="section">
       <h2>選擇第二語</h2>
-      <div class="option-grid">${langButtons}</div>
+      <div class="option-grid cols-2 lang-grid">${langButtons}</div>
     </section>
 
     <section class="section">

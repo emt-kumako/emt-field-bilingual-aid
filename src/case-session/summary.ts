@@ -279,8 +279,8 @@ export function buildSummarySections(state: CaseState): SummarySection[] {
 
 export function formatSummaryText(state: CaseState): string {
   const lines = [
-    "【現場雙語溝通輔助 · 本機摘要】",
-    "本工具為現場雙語溝通輔助，非評估或診斷；臨床判斷仍由救護人員負責。",
+    "【救護現場雙語溝通輔助 · 本機摘要】",
+    "本工具為救護現場雙語溝通輔助，非評估或診斷；臨床判斷仍由救護人員負責。",
     "",
     ...buildSummarySections(state).map(
       (s) => `${s.label}：${s.value}${s.obtained ? "" : ""}`,

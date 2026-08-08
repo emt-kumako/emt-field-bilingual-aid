@@ -9,13 +9,20 @@
   --selected: #d4ebe7;
   --warn-bg: #f3efe4;
   --warn-ink: #4a3f28;
-  --radius: 12px;
+  --radius: 14px;
+  --touch: 3.25rem;
   font-family: "Source Han Sans TC", "Noto Sans TC", "PingFang TC",
-    "Microsoft JhengHei", sans-serif;
+    "Hiragino Sans", "Apple SD Gothic Neo", "Microsoft JhengHei", sans-serif;
+  font-size: 18px;
 }
 
 * {
   box-sizing: border-box;
+}
+
+html,
+body {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -29,33 +36,34 @@ body {
 }
 
 #app {
-  max-width: 720px;
+  width: min(100%, 1080px);
   margin: 0 auto;
-  padding: 1.25rem;
+  padding: 1.25rem 1.5rem 2rem;
 }
 
 h1 {
-  font-size: 1.6rem;
-  margin: 0 0 0.35rem;
+  font-size: clamp(1.55rem, 2.4vw, 2.1rem);
+  margin: 0 0 0.4rem;
   letter-spacing: 0.02em;
+  line-height: 1.25;
 }
 
 .lead {
   margin: 0 0 1.25rem;
   color: var(--muted);
-  font-size: 1rem;
-  line-height: 1.45;
+  font-size: 1.05rem;
+  line-height: 1.5;
 }
 
 .disclaimer {
   background: var(--warn-bg);
   color: var(--warn-ink);
   border-left: 4px solid #b8954a;
-  padding: 0.85rem 1rem;
+  padding: 0.95rem 1.1rem;
   border-radius: var(--radius);
   margin-bottom: 1.5rem;
-  font-size: 0.95rem;
-  line-height: 1.45;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .section {
@@ -63,16 +71,17 @@ h1 {
 }
 
 .section h2 {
-  font-size: 1.05rem;
-  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+  margin: 0 0 0.8rem;
 }
 
 .option-grid {
   display: grid;
-  gap: 0.65rem;
+  gap: 0.75rem;
 }
 
-.option-grid.cols-2 {
+.option-grid.cols-2,
+.lang-grid {
   grid-template-columns: 1fr 1fr;
 }
 
@@ -82,8 +91,8 @@ button.option {
   background: var(--surface);
   color: var(--ink);
   border-radius: var(--radius);
-  min-height: 4.25rem;
-  padding: 0.75rem 1rem;
+  min-height: 5rem;
+  padding: 0.85rem 1rem;
   text-align: left;
   font: inherit;
   cursor: pointer;
@@ -91,15 +100,17 @@ button.option {
 
 button.option .zh {
   display: block;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 650;
+  line-height: 1.3;
 }
 
 button.option .sub {
   display: block;
-  margin-top: 0.2rem;
+  margin-top: 0.25rem;
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 1rem;
+  line-height: 1.35;
 }
 
 button.option[aria-pressed="true"] {
@@ -112,11 +123,11 @@ button.primary {
   width: 100%;
   border: none;
   border-radius: var(--radius);
-  min-height: 3.5rem;
+  min-height: 3.75rem;
   background: var(--accent);
   color: var(--accent-ink);
   font: inherit;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 650;
   cursor: pointer;
 }
@@ -130,10 +141,10 @@ button.secondary,
 button.ghost {
   appearance: none;
   border-radius: var(--radius);
-  min-height: 3rem;
-  padding: 0.65rem 1rem;
+  min-height: var(--touch);
+  padding: 0.7rem 1rem;
   font: inherit;
-  font-size: 1rem;
+  font-size: 1.05rem;
   cursor: pointer;
 }
 
@@ -165,7 +176,7 @@ button.ghost {
 .eyebrow {
   margin: 0 0 0.35rem;
   color: var(--accent);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -174,8 +185,8 @@ button.ghost {
 .actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.65rem;
-  margin-top: 1.25rem;
+  gap: 0.7rem;
+  margin-top: 1.35rem;
 }
 
 .actions .primary {
@@ -184,10 +195,11 @@ button.ghost {
 
 .status-note {
   margin: 0.5rem 0 0;
-  padding: 0.65rem 0.85rem;
+  padding: 0.75rem 0.95rem;
   background: #e7eef5;
   border-radius: var(--radius);
   color: var(--muted);
+  font-size: 1rem;
 }
 
 .section.is-disabled {
@@ -197,7 +209,7 @@ button.ghost {
 
 .body-map {
   display: grid;
-  grid-template-columns: 1fr 1.2fr 1fr;
+  grid-template-columns: 1fr 1.25fr 1fr;
   grid-template-areas:
     ". head ."
     ". neck ."
@@ -206,7 +218,7 @@ button.ghost {
     ". back ."
     ". pelvis ."
     "left-leg . right-leg";
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
 .body-hotspot {
@@ -215,8 +227,8 @@ button.ghost {
   background: var(--surface);
   color: var(--ink);
   border-radius: var(--radius);
-  min-height: 4.5rem;
-  padding: 0.55rem 0.4rem;
+  min-height: 5rem;
+  padding: 0.65rem 0.45rem;
   font: inherit;
   cursor: pointer;
   text-align: center;
@@ -224,15 +236,15 @@ button.ghost {
 
 .body-hotspot .zh {
   display: block;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 650;
 }
 
 .body-hotspot .sub {
   display: block;
-  margin-top: 0.15rem;
+  margin-top: 0.2rem;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
 }
 
 .body-hotspot[aria-pressed="true"] {
@@ -251,7 +263,7 @@ button.ghost {
 }
 .body-hotspot.chest {
   grid-area: chest;
-  min-height: 5.5rem;
+  min-height: 6rem;
 }
 .body-hotspot.right-arm {
   grid-area: right-arm;
@@ -274,17 +286,17 @@ button.ghost {
 
 .emt-only h2 {
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 .refine-input {
   width: 100%;
-  min-height: 3rem;
+  min-height: 3.25rem;
   border: 2px solid var(--line);
   border-radius: var(--radius);
-  padding: 0.65rem 0.85rem;
+  padding: 0.75rem 0.95rem;
   font: inherit;
-  font-size: 1rem;
+  font-size: 1.05rem;
   background: var(--surface);
   color: var(--ink);
 }
@@ -292,7 +304,7 @@ button.ghost {
 .pain-scale {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 0.5rem;
+  gap: 0.55rem;
 }
 
 .pain-score {
@@ -301,9 +313,9 @@ button.ghost {
   background: var(--surface);
   color: var(--ink);
   border-radius: var(--radius);
-  min-height: 3.5rem;
+  min-height: 4rem;
   font: inherit;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 700;
   cursor: pointer;
 }
@@ -316,7 +328,7 @@ button.ghost {
 .step-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.45rem;
   margin: 0 0 1.1rem;
 }
 
@@ -326,9 +338,10 @@ button.ghost {
   background: var(--surface);
   color: var(--muted);
   border-radius: 999px;
-  padding: 0.35rem 0.75rem;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.9rem;
   font: inherit;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   cursor: pointer;
 }
 
@@ -349,7 +362,7 @@ button.ghost {
 
 .summary-list {
   display: grid;
-  gap: 0.55rem;
+  gap: 0.65rem;
   margin-bottom: 1.25rem;
 }
 
@@ -359,14 +372,15 @@ button.ghost {
   border: 2px solid var(--line);
   background: var(--surface);
   border-radius: var(--radius);
-  padding: 0.85rem 1rem;
+  padding: 1rem 1.1rem;
   text-align: left;
   font: inherit;
   cursor: pointer;
   display: grid;
-  grid-template-columns: 4.5rem 1fr auto;
-  gap: 0.65rem;
+  grid-template-columns: 5rem 1fr auto;
+  gap: 0.75rem;
   align-items: start;
+  min-height: 4.25rem;
 }
 
 .summary-row.is-missing {
@@ -377,20 +391,68 @@ button.ghost {
 .summary-label {
   font-weight: 700;
   color: var(--accent);
+  font-size: 1.05rem;
 }
 
 .summary-value {
   color: var(--ink);
-  line-height: 1.4;
+  line-height: 1.45;
+  font-size: 1.05rem;
 }
 
 .summary-edit {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
 .copy-status {
   margin: 0.75rem 0 0;
   color: var(--accent);
   font-weight: 650;
+}
+
+/* Tablet / landscape: use width, keep reading distance comfortable */
+@media (min-width: 768px) {
+  :root {
+    font-size: 19px;
+  }
+
+  #app {
+    padding: 1.75rem 2rem 2.5rem;
+  }
+
+  .option-grid {
+    gap: 0.85rem;
+  }
+
+  button.option {
+    min-height: 5.5rem;
+  }
+
+  .body-map {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .actions {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .actions .primary {
+    grid-column: 1 / -1;
+  }
+
+  .pain-scale {
+    max-width: 640px;
+  }
+}
+
+@media (min-width: 1024px) and (orientation: landscape) {
+  #app {
+    width: min(100%, 1180px);
+  }
+
+  .lang-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }

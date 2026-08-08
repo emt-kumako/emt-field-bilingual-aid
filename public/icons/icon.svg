@@ -1,12 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img">
-  <rect width="512" height="512" rx="96" fill="#1a5c6e"/>
-  <text
-    x="256"
-    y="300"
-    text-anchor="middle"
-    font-size="200"
-    font-family="system-ui, sans-serif"
-    font-weight="700"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="??????????">
+  <defs>
+    <linearGradient id="bg" x1="64" y1="40" x2="448" y2="472" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2a7a8f"/>
+      <stop offset="1" stop-color="#163f4c"/>
+    </linearGradient>
+  </defs>
+
+  <!-- App tile -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- Soft highlight -->
+  <ellipse cx="180" cy="140" rx="160" ry="90" fill="#ffffff" opacity="0.08"/>
+
+  <!-- Left speech bubble (patient language) -->
+  <path
     fill="#f4fafb"
-  >Ù</text>
+    d="M96 168c0-28 22-50 50-50h120c28 0 50 22 50 50v88c0 28-22 50-50 50h-44l-42 36c-6 5-16 1-16-7v-29h-18c-28 0-50-22-50-50v-88z"
+  />
+  <!-- Lines in left bubble -->
+  <rect x="132" y="168" width="108" height="16" rx="8" fill="#1a5c6e" opacity="0.55"/>
+  <rect x="132" y="200" width="78" height="16" rx="8" fill="#1a5c6e" opacity="0.35"/>
+
+  <!-- Right speech bubble (anchor / Chinese side) -->
+  <path
+    fill="#d4ebe7"
+    d="M196 214c0-28 22-50 50-50h120c28 0 50 22 50 50v88c0 28-22 50-50 50h-18v29c0 8-10 12-16 7l-42-36h-44c-28 0-50-22-50-50v-88z"
+  />
+  <!-- Lines in right bubble -->
+  <rect x="272" y="214" width="108" height="16" rx="8" fill="#1a5c6e" opacity="0.7"/>
+  <rect x="272" y="246" width="78" height="16" rx="8" fill="#1a5c6e" opacity="0.45"/>
+
+  <!-- Compact medical cross badge -->
+  <circle cx="400" cy="128" r="52" fill="#f4fafb"/>
+  <rect x="388" y="100" width="24" height="56" rx="8" fill="#c45c4a"/>
+  <rect x="372" y="116" width="56" height="24" rx="8" fill="#c45c4a"/>
 </svg>

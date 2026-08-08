@@ -1,5 +1,12 @@
 /** Second language shown beside Chinese (anchor). */
-export type SecondLanguage = "en" | "vi" | "id";
+export type SecondLanguage =
+  | "en"
+  | "vi"
+  | "id"
+  | "ja"
+  | "ko"
+  | "fil"
+  | "th";
 
 export type Informant = "self" | "family" | "friend" | "other";
 
