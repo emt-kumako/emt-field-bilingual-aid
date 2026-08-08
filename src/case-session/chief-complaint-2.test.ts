@@ -10,6 +10,7 @@ import {
   toggleBodyRegion,
   toggleComplaintType,
 } from "./chief-complaint-1.js";
+import { formatApproxDuration } from "../catalog/chief-complaint-2.js";
 import {
   canCompleteChiefComplaint2,
   completeChiefComplaint2,
@@ -17,7 +18,9 @@ import {
   markChiefComplaint2Unknown,
   selectTimeBucket,
   setPainScore,
+  setTimeAmount,
   setTimeRefine,
+  setTimeUnit,
   showsPainScale,
   skipChiefComplaint2,
   toggleQuality,
@@ -42,7 +45,7 @@ describe("chief complaint step 2", () => {
     expect(showsPainScale(state)).toBe(true);
 
     state = toggleQuality(state, "crushing");
-    expect(canCompleteChiefComplaint2(state)).toBe(false);
+    expect(canCompleteChiefComplaint2(state)).toBe(true);
 
     state = selectTimeBucket(state, "about_20_min");
     expect(getChiefComplaint2Detail(state).timeMode).toBe("duration");
@@ -65,6 +68,32 @@ describe("chief complaint step 2", () => {
     state = selectTimeBucket(state, "yesterday");
     expect(getChiefComplaint2Detail(state).timeMode).toBe("period");
     expect(canCompleteChiefComplaint2(state)).toBe(true);
+  });
+
+  it("allows next after quality or pain without time", () => {
+    let state = atStep2(["pain"], "chest");
+    state = setPainScore(state, 4);
+    expect(canCompleteChiefComplaint2(state)).toBe(true);
+    state = completeChiefComplaint2(state);
+    expect(state.currentStep).toBe("before");
+  });
+
+  it("accepts numeric duration with unit and shows bilingual approx text", () => {
+    let state = atStep2(["weakness"]);
+    state = setTimeAmount(state, "30");
+    state = setTimeUnit(state, "minutes");
+    const detail = getChiefComplaint2Detail(state);
+    expect(detail.timeAmount).toBe(30);
+    expect(detail.timeUnit).toBe("minutes");
+    expect(detail.timeBucketId).toBeNull();
+    expect(canCompleteChiefComplaint2(state)).toBe(true);
+    expect(formatApproxDuration(30, "minutes", "zh")).toBe("約 30 分鐘");
+    expect(formatApproxDuration(30, "minutes", "ja")).toBe("約30分");
+    expect(formatApproxDuration(2, "hours", "en")).toBe("About 2 hours");
+
+    state = selectTimeBucket(state, "today");
+    expect(getChiefComplaint2Detail(state).timeAmount).toBeNull();
+    expect(getChiefComplaint2Detail(state).timeBucketId).toBe("today");
   });
 
   it("hides pain scale for non-pain complaints and ignores score attempts", () => {

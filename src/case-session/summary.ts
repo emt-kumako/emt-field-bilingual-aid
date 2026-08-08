@@ -5,6 +5,7 @@ import {
 } from "../catalog/chief-complaint-1.js";
 import {
   QUALITY_OPTIONS,
+  formatApproxDuration,
   getTimeBucket,
 } from "../catalog/chief-complaint-2.js";
 import { getHistoryCatalog, type HistoryStepId } from "../catalog/history-block.js";
@@ -112,12 +113,25 @@ function formatChiefComplaint(state: CaseState): SummarySection {
       )}`,
     );
   }
-  if (d2.timeBucketId) {
-    const bucket = getTimeBucket(d2.timeBucketId)?.labels.zh ?? d2.timeBucketId;
-    const refine = d2.timeRefine.trim() ? `；細調：${d2.timeRefine.trim()}` : "";
-    parts.push(`時間：${bucket}${refine}`);
-  } else if (a2?.status === "unknown" || a2?.status === "skipped") {
-    parts.push(`時間：${statusLabel(a2.status)?.value}`);
+  {
+    const durationZh =
+      d2.timeAmount !== null &&
+      d2.timeAmount > 0 &&
+      d2.timeUnit !== null
+        ? formatApproxDuration(d2.timeAmount, d2.timeUnit, "zh")
+        : d2.timeBucketId
+          ? (getTimeBucket(d2.timeBucketId)?.labels.zh ?? d2.timeBucketId)
+          : "";
+    if (durationZh) {
+      const refine = d2.timeRefine.trim()
+        ? `；細調：${d2.timeRefine.trim()}`
+        : "";
+      parts.push(`時間：${durationZh}${refine}`);
+    } else if (a2?.status === "unknown" || a2?.status === "skipped") {
+      parts.push(`時間：${statusLabel(a2.status)?.value}`);
+    } else if (d2.timeRefine.trim()) {
+      parts.push(`時間：細調：${d2.timeRefine.trim()}`);
+    }
   }
   if (d2.painScore !== null) {
     parts.push(`痛尺：${d2.painScore}/10`);

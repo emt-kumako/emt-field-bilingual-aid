@@ -217,7 +217,9 @@ h1 {
 .section h2 {
   font-size: 0.95rem;
   margin: 0;
-  line-height: 1.25;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .split-panels {
@@ -282,7 +284,9 @@ button.option .zh {
   display: block;
   font-size: 1.02rem;
   font-weight: 650;
-  line-height: 1.2;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 button.option .sub {
@@ -290,7 +294,10 @@ button.option .sub {
   margin-top: 0.12rem;
   color: var(--muted);
   font-size: 0.85rem;
-  line-height: 1.25;
+  line-height: 1.35;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 button.option[aria-pressed="true"] {
@@ -383,6 +390,11 @@ button.ghost {
   flex: 0 0 auto;
 }
 
+.status-note.gate-note {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+}
+
 .section.is-disabled {
   opacity: 0.45;
   pointer-events: none;
@@ -413,18 +425,20 @@ button.ghost {
   border-radius: var(--radius);
   min-height: 0;
   height: 100%;
-  padding: 0.25rem 0.3rem;
+  padding: 0.3rem 0.35rem;
   font: inherit;
   cursor: pointer;
   text-align: center;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .body-hotspot .zh {
   display: block;
   font-size: 0.92rem;
   font-weight: 650;
-  line-height: 1.15;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .body-hotspot .sub {
@@ -432,7 +446,10 @@ button.ghost {
   margin-top: 0.1rem;
   color: var(--muted);
   font-size: 0.78rem;
-  line-height: 1.15;
+  line-height: 1.3;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .body-hotspot[aria-pressed="true"] {
@@ -486,6 +503,109 @@ button.ghost {
   font-size: 0.95rem;
   background: var(--surface);
   color: var(--ink);
+}
+
+.duration-entry {
+  display: grid;
+  grid-template-columns: auto minmax(4.5rem, 6.5rem) 1fr;
+  gap: 0.55rem;
+  align-items: stretch;
+}
+
+.duration-prefix {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 2.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1.25;
+}
+
+.duration-prefix .sub {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 550;
+}
+
+.duration-amount {
+  width: 100%;
+  min-height: 3.25rem;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.55rem;
+  font: inherit;
+  font-size: 1.35rem;
+  font-weight: 700;
+  text-align: center;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.duration-amount:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.unit-grid {
+  gap: 0.4rem;
+}
+
+.unit-chip {
+  min-height: 3.25rem;
+  text-align: center;
+  padding: 0.4rem 0.45rem;
+}
+
+.unit-chip .zh {
+  font-size: 1rem;
+}
+
+.unit-chip .sub {
+  font-size: 0.78rem;
+}
+
+.duration-preview {
+  margin: 0.55rem 0 0;
+  padding: 0.65rem 0.8rem;
+  border-radius: var(--radius);
+  background: var(--selected);
+  border: 1px solid rgba(26, 92, 110, 0.22);
+  display: grid;
+  gap: 0.15rem;
+}
+
+.duration-preview.is-empty {
+  background: #eef3f5;
+  border-style: dashed;
+  color: var(--muted);
+}
+
+.duration-preview .preview-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+
+.duration-preview .zh {
+  font-size: 1.15rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.duration-preview .sub {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.quick-time {
+  margin-top: 0.55rem;
+}
+
+.option-grid.cols-1 {
+  grid-template-columns: 1fr;
 }
 
 .pain-scale {
@@ -610,7 +730,7 @@ button.ghost {
   font-size: 0.9rem;
 }
 
-/* Phone: readable stacked layout; content scrolls inside the shell. */
+/* Phone: free page scroll — do not force each step into one viewport. */
 @media (max-width: 767.98px) {
   :root {
     --footer-h: auto;
@@ -618,32 +738,59 @@ button.ghost {
     font-size: 15px;
   }
 
+  html,
+  body {
+    height: auto;
+    min-height: 100dvh;
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  body {
+    height: auto;
+    max-height: none;
+  }
+
   #app {
+    height: auto;
+    min-height: 100dvh;
+    max-height: none;
+    overflow: visible;
     padding: 0.55rem max(0.75rem, env(safe-area-inset-right, 0px)) 0
       max(0.75rem, env(safe-area-inset-left, 0px));
   }
 
+  .view,
   .screen {
-    gap: 0.45rem;
+    flex: 0 0 auto;
+    min-height: 0;
+    height: auto;
+    overflow: visible;
+    gap: 0.55rem;
   }
 
   .screen-main {
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    gap: 0.7rem;
-    padding-bottom: 0.15rem;
+    flex: 0 0 auto;
+    min-height: 0;
+    overflow: visible;
+    gap: 0.85rem;
+    padding-bottom: 0.25rem;
   }
 
   .screen-chrome {
-    padding-top: 0.15rem;
-    border-top: 1px solid rgba(197, 212, 219, 0.55);
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    margin-top: 0.35rem;
+    padding: 0.55rem 0 calc(0.4rem + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid rgba(197, 212, 219, 0.65);
     background: linear-gradient(
       180deg,
-      rgba(232, 238, 241, 0) 0%,
-      rgba(232, 238, 241, 0.55) 35%,
-      transparent 100%
+      rgba(232, 238, 241, 0.35) 0%,
+      rgba(232, 238, 241, 0.94) 28%,
+      var(--bg) 100%
     );
   }
 
@@ -674,7 +821,7 @@ button.ghost {
     display: flex;
     flex-direction: column;
     flex: 0 0 auto;
-    gap: 0.8rem;
+    gap: 1rem;
   }
 
   .section.grow,
@@ -688,7 +835,7 @@ button.ghost {
   }
 
   .option-grid {
-    gap: 0.5rem;
+    gap: 0.55rem;
   }
 
   .option-grid.cols-3 {
@@ -697,13 +844,13 @@ button.ghost {
 
   .twin-sections {
     grid-template-columns: 1fr;
-    gap: 0.7rem;
+    gap: 0.85rem;
   }
 
   button.option {
-    min-height: 3.35rem;
+    min-height: 3.5rem;
     height: auto;
-    padding: 0.55rem 0.7rem;
+    padding: 0.65rem 0.75rem;
   }
 
   button.option .zh {
@@ -711,25 +858,31 @@ button.ghost {
   }
 
   button.option .sub {
-    font-size: 0.86rem;
+    font-size: 0.88rem;
+    line-height: 1.4;
   }
 
   .body-map {
     flex: 0 0 auto;
-    height: min(52vh, 22rem);
-    min-height: 16.5rem;
+    height: auto;
+    min-height: 0;
+    grid-template-rows: repeat(7, minmax(3.1rem, auto));
+    gap: 0.4rem;
   }
 
   .body-hotspot {
-    padding: 0.3rem 0.25rem;
+    height: auto;
+    min-height: 3.1rem;
+    padding: 0.4rem 0.3rem;
   }
 
   .body-hotspot .zh {
-    font-size: 0.88rem;
+    font-size: 0.9rem;
   }
 
   .body-hotspot .sub {
-    font-size: 0.72rem;
+    font-size: 0.78rem;
+    line-height: 1.35;
   }
 
   .actions {
@@ -745,19 +898,19 @@ button.ghost {
 
   .summary-list {
     grid-auto-rows: auto;
-    gap: 0.45rem;
+    gap: 0.5rem;
   }
 
   .summary-row {
     height: auto;
     min-height: 3.1rem;
     grid-template-columns: 3.4rem 1fr auto;
-    padding: 0.55rem 0.65rem;
+    padding: 0.6rem 0.7rem;
     align-items: start;
   }
 
   .summary-value {
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 4;
   }
 
   .site-footer {
@@ -776,6 +929,94 @@ button.ghost {
   }
 }
 
+/* Longer second languages: looser lines, no tight tracking. */
+#app[data-second-lang="ja"] button.option .sub,
+#app[data-second-lang="ja"] .body-hotspot .sub,
+#app[data-second-lang="ja"] .section h2,
+#app[data-second-lang="ja"] .lead,
+#app[data-second-lang="ko"] button.option .sub,
+#app[data-second-lang="ko"] .body-hotspot .sub,
+#app[data-second-lang="ko"] .section h2,
+#app[data-second-lang="th"] button.option .sub,
+#app[data-second-lang="th"] .body-hotspot .sub,
+#app[data-second-lang="th"] .section h2,
+#app[data-second-lang="vi"] button.option .sub,
+#app[data-second-lang="vi"] .body-hotspot .sub,
+#app[data-second-lang="vi"] .section h2,
+#app[data-second-lang="fil"] button.option .sub,
+#app[data-second-lang="fil"] .body-hotspot .sub,
+#app[data-second-lang="fil"] .section h2,
+#app[data-second-lang="id"] button.option .sub,
+#app[data-second-lang="id"] .body-hotspot .sub,
+#app[data-second-lang="id"] .section h2 {
+  letter-spacing: 0;
+  line-height: 1.45;
+}
+
+#app[data-second-lang="ja"] button.option,
+#app[data-second-lang="ko"] button.option,
+#app[data-second-lang="th"] button.option,
+#app[data-second-lang="vi"] button.option,
+#app[data-second-lang="fil"] button.option,
+#app[data-second-lang="id"] button.option {
+  min-height: 3.7rem;
+  padding-top: 0.7rem;
+  padding-bottom: 0.7rem;
+}
+
+#app[data-second-lang="ja"] .body-hotspot,
+#app[data-second-lang="ko"] .body-hotspot,
+#app[data-second-lang="th"] .body-hotspot,
+#app[data-second-lang="vi"] .body-hotspot,
+#app[data-second-lang="fil"] .body-hotspot,
+#app[data-second-lang="id"] .body-hotspot {
+  min-height: 3.35rem;
+  padding: 0.45rem 0.35rem;
+}
+
+#app[data-second-lang="ja"] .body-hotspot .zh,
+#app[data-second-lang="ko"] .body-hotspot .zh,
+#app[data-second-lang="th"] .body-hotspot .zh,
+#app[data-second-lang="vi"] .body-hotspot .zh,
+#app[data-second-lang="fil"] .body-hotspot .zh,
+#app[data-second-lang="id"] .body-hotspot .zh {
+  font-size: 0.86rem;
+}
+
+#app[data-second-lang="ja"] .body-hotspot .sub,
+#app[data-second-lang="ko"] .body-hotspot .sub,
+#app[data-second-lang="th"] .body-hotspot .sub,
+#app[data-second-lang="vi"] .body-hotspot .sub,
+#app[data-second-lang="fil"] .body-hotspot .sub,
+#app[data-second-lang="id"] .body-hotspot .sub {
+  font-size: 0.76rem;
+}
+
+#app[data-second-lang="ja"] .option-grid,
+#app[data-second-lang="ko"] .option-grid,
+#app[data-second-lang="th"] .option-grid,
+#app[data-second-lang="vi"] .option-grid,
+#app[data-second-lang="fil"] .option-grid,
+#app[data-second-lang="id"] .option-grid {
+  gap: 0.6rem;
+}
+
+@media (max-width: 767.98px) {
+  #app[data-second-lang="th"] .option-grid.cols-3,
+  #app[data-second-lang="vi"] .option-grid.cols-3,
+  #app[data-second-lang="fil"] .option-grid.cols-3 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .duration-entry {
+    grid-template-columns: auto minmax(4.25rem, 1fr);
+  }
+
+  .unit-grid {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 767.98px) and (orientation: landscape) {
   .brand-title-main {
     font-size: 1.25rem;
@@ -783,11 +1024,6 @@ button.ghost {
 
   .brand-title-sub {
     font-size: 0.95rem;
-  }
-
-  .body-map {
-    height: min(70vh, 18rem);
-    min-height: 14rem;
   }
 
   .lead,

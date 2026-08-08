@@ -59,6 +59,9 @@ export type ChiefComplaint2Detail = {
   /** Patient-facing coarse time kind. */
   timeMode: "duration" | "period" | null;
   timeBucketId: string | null;
+  /** Numeric duration: 約 N 分鐘／小時／日 (clears bucket when set). */
+  timeAmount: number | null;
+  timeUnit: "minutes" | "hours" | "days" | null;
   /** Optional EMT refine (does not block pointing flow). */
   timeRefine: string;
   /** 1–10 when pain; otherwise null. */
@@ -70,6 +73,8 @@ export function emptyChiefComplaint2Detail(): ChiefComplaint2Detail {
     qualityIds: [],
     timeMode: null,
     timeBucketId: null,
+    timeAmount: null,
+    timeUnit: null,
     timeRefine: "",
     painScore: null,
   };

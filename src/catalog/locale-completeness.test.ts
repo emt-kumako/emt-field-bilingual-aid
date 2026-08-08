@@ -3,7 +3,11 @@ import {
   BODY_REGIONS,
   COMPLAINT_TYPES,
 } from "./chief-complaint-1.js";
-import { QUALITY_OPTIONS, TIME_BUCKETS } from "./chief-complaint-2.js";
+import {
+  QUALITY_OPTIONS,
+  TIME_BUCKETS,
+  TIME_UNITS,
+} from "./chief-complaint-2.js";
 import { HISTORY_BLOCK } from "./history-block.js";
 import {
   MissingLocaleError,
@@ -39,6 +43,9 @@ describe("locale packs", () => {
     }
     for (const t of TIME_BUCKETS) {
       assertComplete(t.labels, `time:${t.id}`);
+    }
+    for (const u of TIME_UNITS) {
+      assertComplete(u.labels, `timeUnit:${u.id}`);
     }
     for (const step of HISTORY_BLOCK) {
       assertComplete(step.title, `historyTitle:${step.id}`);

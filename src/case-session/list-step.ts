@@ -140,7 +140,7 @@ export function canCompleteListStep(
   if (!answer) return false;
   if (answer.status === "unknown" || answer.status === "skipped") return true;
   if (answer.status !== "answered") return false;
-  return answer.optionIds.length > 0;
+  return answer.optionIds.length > 0 || answer.note.trim() !== "";
 }
 
 export function completeListStep(

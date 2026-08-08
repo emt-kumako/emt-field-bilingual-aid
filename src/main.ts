@@ -6,6 +6,8 @@ import {
 import {
   QUALITY_OPTIONS,
   TIME_BUCKETS,
+  TIME_UNITS,
+  formatApproxDuration,
 } from "./catalog/chief-complaint-2.js";
 import {
   HISTORY_STEP_ORDER,
@@ -51,12 +53,15 @@ import {
   markOtherSymptomsUnknown,
   needsBodyLocation,
   returnToSummaryView,
+  formatDurationForLang,
   selectTimeBucket,
   setInformant,
   setListNote,
   setPainScore,
   setSecondLanguage,
+  setTimeAmount,
   setTimeRefine,
+  setTimeUnit,
   showsPainScale,
   skipChiefComplaint1,
   skipChiefComplaint2,
@@ -167,8 +172,44 @@ function screenLayout(parts: {
   `;
 }
 
+function gateNote(message: string): string {
+  return `<p class="status-note gate-note">${message}</p>`;
+}
+
+function cc1GateNote(): string {
+  if (canCompleteChiefComplaint1(state)) return "";
+  const detail = getChiefComplaint1Detail(state);
+  if (detail.complaintTypeIds.length === 0) {
+    return gateNote("請選擇主訴，或按「不知道／無法回答／跳過」");
+  }
+  if (needsBodyLocation(state) && detail.bodyRegionIds.length === 0) {
+    return gateNote("此主訴需點選身體部位後才能下一步");
+  }
+  return "";
+}
+
+function cc2GateNote(): string {
+  if (canCompleteChiefComplaint2(state)) return "";
+  return gateNote(
+    "請選擇性質、輸入多久了（數字＋單位）或時段／疼痛指數，或按「不知道／無法回答／跳過」",
+  );
+}
+
+function histGateNote(step: HistoryStepId): string {
+  if (canCompleteListStep(state, step)) return "";
+  return gateNote("請選擇至少一項，或按「不知道／無法回答／跳過」");
+}
+
+function senseGateNote(): string {
+  if (canCompleteOtherSymptoms(state)) return "";
+  return gateNote("請選擇伴隨症狀或身體部位，或按「不知道／無法回答／跳過」");
+}
+
 function render(): void {
   ensureShell();
+  const prevStep = app!.dataset.step;
+  app!.dataset.secondLang = state.secondLanguage ?? "";
+  app!.dataset.step = state.currentStep;
   switch (state.currentStep) {
     case "start":
       renderStart();
@@ -192,6 +233,10 @@ function render(): void {
     case "summary":
       renderSummary();
       break;
+  }
+  if (prevStep !== state.currentStep) {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    getView().scrollTop = 0;
   }
 }
 
@@ -283,6 +328,7 @@ function renderHistoryStep(step: HistoryStepId): void {
       </section>
       ${noteBlock}
       ${statusNote}
+      ${histGateNote(step)}
     `,
     actions: `
       <div class="actions">
@@ -495,6 +541,7 @@ function renderChiefComplaint1(): void {
         </section>
       </div>
       ${statusNote}
+      ${cc1GateNote()}
     `,
     actions: `
       <div class="actions">
@@ -514,8 +561,9 @@ function renderChiefComplaint1(): void {
 function renderChiefComplaint2(): void {
   const detail = getChiefComplaint2Detail(state);
   const pain = showsPainScale(state);
+  const lang = secondLang();
 
-  // Pain: full quality list. Non-pain: non-pain-related + other.
+  // Pain: full quality list. Non-pain: non-pain-related (+ 疼痛 / 其他).
   const qualityButtons = QUALITY_OPTIONS.filter((q) =>
     pain ? true : !q.painRelated || q.id === "other_quality",
   )
@@ -535,22 +583,35 @@ function renderChiefComplaint2(): void {
     })
     .join("");
 
-  const durationButtons = TIME_BUCKETS.filter((b) => b.mode === "duration")
-    .map((opt) => {
-      const pressed = detail.timeBucketId === opt.id;
-      return `
-        <button
-          type="button"
-          class="option"
-          data-action="cc2-time"
-          data-id="${opt.id}"
-          aria-pressed="${pressed}"
-        >
-          ${bilingualButtonLabel(opt.labels)}
-        </button>
-      `;
-    })
-    .join("");
+  const justNow = TIME_BUCKETS.find((b) => b.id === "just_now");
+  const justNowButton = justNow
+    ? `
+      <button
+        type="button"
+        class="option"
+        data-action="cc2-time"
+        data-id="${justNow.id}"
+        aria-pressed="${detail.timeBucketId === justNow.id}"
+      >
+        ${bilingualButtonLabel(justNow.labels)}
+      </button>
+    `
+    : "";
+
+  const unitButtons = TIME_UNITS.map((unit) => {
+    const pressed = detail.timeUnit === unit.id;
+    return `
+      <button
+        type="button"
+        class="option unit-chip"
+        data-action="cc2-time-unit"
+        data-id="${unit.id}"
+        aria-pressed="${pressed}"
+      >
+        ${bilingualButtonLabel(unit.labels)}
+      </button>
+    `;
+  }).join("");
 
   const periodButtons = TIME_BUCKETS.filter((b) => b.mode === "period")
     .map((opt) => {
@@ -594,11 +655,34 @@ function renderChiefComplaint2(): void {
         ? `<p class="status-note">已標示：跳過</p>`
         : "";
 
-  const title = bilingualPair(UI_COPY.cc2Title, secondLang());
-  const quality = bilingualPair(UI_COPY.cc2Quality, secondLang());
-  const duration = bilingualPair(UI_COPY.cc2Duration, secondLang());
-  const period = bilingualPair(UI_COPY.cc2Period, secondLang());
-  const painTitle = bilingualPair(UI_COPY.cc2Pain, secondLang());
+  const title = bilingualPair(UI_COPY.cc2Title, lang);
+  const quality = bilingualPair(UI_COPY.cc2Quality, lang);
+  const duration = bilingualPair(UI_COPY.cc2Duration, lang);
+  const about = bilingualPair(UI_COPY.cc2DurationAbout, lang);
+  const previewLabel = bilingualPair(UI_COPY.cc2DurationPreview, lang);
+  const period = bilingualPair(UI_COPY.cc2Period, lang);
+  const painTitle = bilingualPair(UI_COPY.cc2Pain, lang);
+
+  const previewZh =
+    detail.timeAmount && detail.timeUnit
+      ? formatApproxDuration(detail.timeAmount, detail.timeUnit, "zh")
+      : "";
+  const previewOther =
+    detail.timeAmount && detail.timeUnit
+      ? formatApproxDuration(detail.timeAmount, detail.timeUnit, lang)
+      : formatDurationForLang(state, lang);
+  const previewBlock =
+    previewZh || previewOther
+      ? `<p class="duration-preview" aria-live="polite">
+          <span class="preview-label">${previewLabel.zh} · ${previewLabel.other}</span>
+          <span class="zh">${previewZh || "—"}</span>
+          <span class="sub">${previewOther || "—"}</span>
+        </p>`
+      : `<p class="duration-preview is-empty" aria-live="polite">
+          <span class="preview-label">${previewLabel.zh} · ${previewLabel.other}</span>
+          <span class="zh">約＿＿分鐘／小時／日</span>
+          <span class="sub">${about.other} ＿＿</span>
+        </p>`;
 
   getView().innerHTML = screenLayout({
     header: `
@@ -613,16 +697,37 @@ function renderChiefComplaint2(): void {
         <h2>${quality.zh} · ${quality.other}</h2>
         <div class="option-grid cols-3">${qualityButtons}</div>
       </section>
-      <div class="twin-sections">
-        <section class="section">
-          <h2>${duration.zh} · ${duration.other}</h2>
-          <div class="option-grid cols-2">${durationButtons}</div>
-        </section>
-        <section class="section">
-          <h2>${period.zh} · ${period.other}</h2>
-          <div class="option-grid cols-2">${periodButtons}</div>
-        </section>
-      </div>
+      <section class="section">
+        <h2>${duration.zh} · ${duration.other}</h2>
+        <div class="duration-entry">
+          <span class="duration-prefix">
+            <span class="zh">${about.zh}</span>
+            <span class="sub">${about.other}</span>
+          </span>
+          <input
+            class="duration-amount"
+            type="number"
+            inputmode="numeric"
+            min="1"
+            max="9999"
+            step="1"
+            placeholder="＿＿"
+            data-action="cc2-time-amount"
+            value="${detail.timeAmount ?? ""}"
+          />
+          <div class="option-grid cols-3 unit-grid">${unitButtons}</div>
+        </div>
+        ${previewBlock}
+        ${
+          justNowButton
+            ? `<div class="option-grid cols-1 quick-time">${justNowButton}</div>`
+            : ""
+        }
+      </section>
+      <section class="section">
+        <h2>${period.zh} · ${period.other}</h2>
+        <div class="option-grid cols-2">${periodButtons}</div>
+      </section>
       <section class="section emt-only compact">
         <h2>EMT 細調時間（選填）</h2>
         <input
@@ -642,6 +747,7 @@ function renderChiefComplaint2(): void {
           : ""
       }
       ${statusNote}
+      ${cc2GateNote()}
     `,
     actions: `
       <div class="actions">
@@ -764,6 +870,7 @@ function renderOtherSymptoms(): void {
         </section>
       </div>
       ${statusNote}
+      ${senseGateNote()}
     `,
     actions: `
       <div class="actions">
@@ -877,6 +984,9 @@ app.addEventListener("click", (event) => {
       break;
     case "cc2-time":
       if (id) state = selectTimeBucket(state, id);
+      break;
+    case "cc2-time-unit":
+      if (id) state = setTimeUnit(state, id);
       break;
     case "cc2-pain":
       if (id) state = setPainScore(state, Number(id));
@@ -993,8 +1103,71 @@ app.addEventListener("click", (event) => {
   render();
 });
 
+function refreshCc2NextAndPreview(): void {
+  const nextBtn = app!.querySelector<HTMLButtonElement>(
+    "button[data-action='cc2-next']",
+  );
+  if (nextBtn) {
+    nextBtn.disabled = !canCompleteChiefComplaint2(state);
+  }
+  const detail = getChiefComplaint2Detail(state);
+  const preview = app!.querySelector(".duration-preview");
+  if (!preview) return;
+  const lang = secondLang();
+  const previewLabel = bilingualPair(UI_COPY.cc2DurationPreview, lang);
+  const about = bilingualPair(UI_COPY.cc2DurationAbout, lang);
+  if (detail.timeAmount && detail.timeUnit) {
+    const zh = formatApproxDuration(
+      detail.timeAmount,
+      detail.timeUnit,
+      "zh",
+    );
+    const other = formatApproxDuration(
+      detail.timeAmount,
+      detail.timeUnit,
+      lang,
+    );
+    preview.classList.remove("is-empty");
+    preview.innerHTML = `
+      <span class="preview-label">${previewLabel.zh} · ${previewLabel.other}</span>
+      <span class="zh">${zh}</span>
+      <span class="sub">${other}</span>
+    `;
+  } else {
+    preview.classList.add("is-empty");
+    preview.innerHTML = `
+      <span class="preview-label">${previewLabel.zh} · ${previewLabel.other}</span>
+      <span class="zh">約＿＿分鐘／小時／日</span>
+      <span class="sub">${about.other} ＿＿</span>
+    `;
+  }
+  // Keep unit chip pressed state in sync without full re-render.
+  for (const btn of app!.querySelectorAll<HTMLButtonElement>(
+    "button[data-action='cc2-time-unit']",
+  )) {
+    btn.setAttribute(
+      "aria-pressed",
+      String(btn.dataset.id === detail.timeUnit),
+    );
+  }
+  for (const btn of app!.querySelectorAll<HTMLButtonElement>(
+    "button[data-action='cc2-time']",
+  )) {
+    btn.setAttribute(
+      "aria-pressed",
+      String(btn.dataset.id === detail.timeBucketId),
+    );
+  }
+}
+
 app.addEventListener("input", (event) => {
   const target = event.target as HTMLInputElement;
+  if (target.matches("input[data-action='cc2-time-amount']")) {
+    state = setTimeAmount(state, target.value);
+    refreshCc2NextAndPreview();
+    return;
+  }
+
   if (target.matches("input[data-action='cc2-refine']")) {
     state = setTimeRefine(state, target.value);
     const nextBtn = app!.querySelector<HTMLButtonElement>(

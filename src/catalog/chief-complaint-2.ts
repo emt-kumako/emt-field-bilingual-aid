@@ -1,3 +1,4 @@
+import type { SecondLanguage } from "../case-session/types.js";
 import { L, type BilingualText } from "./labels.js";
 
 export type QualityOption = {
@@ -12,7 +13,94 @@ export type TimeBucketOption = {
   labels: BilingualText;
 };
 
+export type TimeUnit = "minutes" | "hours" | "days";
+
+export type TimeUnitOption = {
+  id: TimeUnit;
+  labels: BilingualText;
+};
+
+export const TIME_UNITS: TimeUnitOption[] = [
+  {
+    id: "minutes",
+    labels: L("分鐘", {
+      en: "minutes",
+      vi: "phút",
+      id: "menit",
+      ja: "分",
+      ko: "분",
+      fil: "minuto",
+      th: "นาที",
+    }),
+  },
+  {
+    id: "hours",
+    labels: L("小時", {
+      en: "hours",
+      vi: "giờ",
+      id: "jam",
+      ja: "時間",
+      ko: "시간",
+      fil: "oras",
+      th: "ชั่วโมง",
+    }),
+  },
+  {
+    id: "days",
+    labels: L("日", {
+      en: "days",
+      vi: "ngày",
+      id: "hari",
+      ja: "日",
+      ko: "일",
+      fil: "araw",
+      th: "วัน",
+    }),
+  },
+];
+
+const ABOUT_PREFIX = L("約", {
+  en: "About",
+  vi: "Khoảng",
+  id: "Sekitar",
+  ja: "約",
+  ko: "약",
+  fil: "Mga",
+  th: "ประมาณ",
+});
+
+/** Bilingual “約 N 分鐘／小時／日” display for numeric duration. */
+export function formatApproxDuration(
+  amount: number,
+  unit: TimeUnit,
+  lang: "zh" | SecondLanguage,
+): string {
+  const unitLabels = TIME_UNITS.find((u) => u.id === unit)?.labels;
+  if (!unitLabels || !Number.isFinite(amount) || amount <= 0) return "";
+  const unitText = lang === "zh" ? unitLabels.zh : unitLabels[lang];
+  const about = lang === "zh" ? ABOUT_PREFIX.zh : ABOUT_PREFIX[lang];
+  if (lang === "ja" || lang === "ko") return `${about}${amount}${unitText}`;
+  return `${about} ${amount} ${unitText}`;
+}
+
+export function getTimeUnit(id: string): TimeUnitOption | undefined {
+  return TIME_UNITS.find((u) => u.id === id);
+}
+
 export const QUALITY_OPTIONS: QualityOption[] = [
+  {
+    id: "pain_general",
+    painRelated: false,
+    labels: L("疼痛", {
+      en: "Pain",
+      vi: "Đau",
+      id: "Nyeri",
+      ja: "痛み",
+      ko: "통증",
+      fil: "Sakit",
+      th: "ปวด",
+    }),
+  },
   {
     id: "dull",
     painRelated: true,
@@ -20,8 +108,8 @@ export const QUALITY_OPTIONS: QualityOption[] = [
       en: "Dull / pressure",
       vi: "Đau tức",
       id: "Nyeri tumpul",
-      ja: "鈍い痛み・圧迫感",
-      ko: "둔한 통증/압박감",
+      ja: "鈍い痛み",
+      ko: "둔한 통증",
       fil: "Mapurol / bigat",
       th: "ปวดตื้อ/แน่น",
     }),
@@ -33,9 +121,9 @@ export const QUALITY_OPTIONS: QualityOption[] = [
       en: "Sharp / stabbing",
       vi: "Đau nhói",
       id: "Nyeri tajam",
-      ja: "刺すような痛み",
+      ja: "刺す痛み",
       ko: "찌르는 통증",
-      fil: "Matulis / sinasaksak",
+      fil: "Matulis / saksak",
       th: "ปวดแปลบ",
     }),
   },
@@ -46,8 +134,8 @@ export const QUALITY_OPTIONS: QualityOption[] = [
       en: "Burning",
       vi: "Nóng rát",
       id: "Terbakar",
-      ja: "焼けるような痛み",
-      ko: "화끈거리는 통증",
+      ja: "焼ける痛み",
+      ko: "화끈거림",
       fil: "Nasusunog",
       th: "ปวดร้อน",
     }),
@@ -57,12 +145,12 @@ export const QUALITY_OPTIONS: QualityOption[] = [
     painRelated: true,
     labels: L("壓迫／緊悶", {
       en: "Crushing / tight",
-      vi: "Đau thắt / nặng ngực",
-      id: "Terasa menekan / sesak",
-      ja: "締めつけ・圧迫",
-      ko: "조이는/누르는 느낌",
-      fil: "Pumipisil / mahigpit",
-      th: "แน่น/ถูกกดทับ",
+      vi: "Đau thắt",
+      id: "Menekan / sesak",
+      ja: "締めつけ",
+      ko: "조이는 느낌",
+      fil: "Pumipisil",
+      th: "แน่น/กดทับ",
     }),
   },
   {
@@ -71,9 +159,9 @@ export const QUALITY_OPTIONS: QualityOption[] = [
     labels: L("搏動痛", {
       en: "Throbbing",
       vi: "Đau nhịp",
-      id: "Nyeri berdenyut",
-      ja: "ズキズキする痛み",
-      ko: "욱신거리는 통증",
+      id: "Berdenyut",
+      ja: "ズキズキ",
+      ko: "욱신거림",
       fil: "Kumikirot",
       th: "ปวดตุบๆ",
     }),
@@ -83,21 +171,21 @@ export const QUALITY_OPTIONS: QualityOption[] = [
     painRelated: true,
     labels: L("絞痛／抽筋感", {
       en: "Cramping",
-      vi: "Đau quặn / chuột rút",
+      vi: "Đau quặn",
       id: "Keram / mulas",
-      ja: "差し込み・けいれん痛",
-      ko: "쥐어짜는/경련성 통증",
-      fil: "Pulikat / tipak",
-      th: "ปวดบิด/เป็นตะคริว",
+      ja: "差し込み",
+      ko: "쥐어짜는 통증",
+      fil: "Pulikat",
+      th: "ปวดบิด",
     }),
   },
   {
     id: "tight_breath",
     painRelated: false,
     labels: L("喘不過氣", {
-      en: "Cannot catch breath",
+      en: "Can't breathe",
       vi: "Không thở được",
-      id: "Tidak bisa bernapas",
+      id: "Tak bisa napas",
       ja: "息ができない",
       ko: "숨이 안 참",
       fil: "Hindi makahinga",
