@@ -1,0 +1,26 @@
+{
+  "name": "現場雙語溝通輔助",
+  "short_name": "雙語溝通",
+  "description": "救護現場雙語溝通輔助（非評估或診斷）。離線可用，中文為錨。",
+  "theme_color": "#1a3a4a",
+  "background_color": "#e8eef1",
+  "display": "standalone",
+  "orientation": "any",
+  "start_url": "./",
+  "scope": "./",
+  "lang": "zh-Hant",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
