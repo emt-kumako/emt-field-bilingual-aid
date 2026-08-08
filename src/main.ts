@@ -99,7 +99,51 @@ function secondLang(): SecondLanguage {
   return state.secondLanguage ?? "en";
 }
 
+function ensureShell(): void {
+  if (app!.querySelector("#view")) return;
+  app!.innerHTML = `
+    <div id="view" class="view"></div>
+    <footer class="site-footer" role="contentinfo">
+      <p class="footer-disclaimer">${DISCLAIMER_ZH}</p>
+      <img
+        class="footer-logo"
+        src="${import.meta.env.BASE_URL}brand/zxb-logo.png"
+        alt="打火 ZXB · ZHONGXINBEI BRANCH"
+        width="328"
+        height="96"
+      />
+    </footer>
+  `;
+}
+
+function getView(): HTMLElement {
+  ensureShell();
+  const view = app!.querySelector<HTMLElement>("#view");
+  if (!view) throw new Error("#view missing");
+  return view;
+}
+
+/** One-viewport shell: chrome pinned, main fills remaining height. */
+function screenLayout(parts: {
+  header?: string;
+  body: string;
+  actions?: string;
+}): string {
+  return `
+    <div class="screen">
+      ${parts.header ?? ""}
+      <div class="screen-main">${parts.body}</div>
+      ${
+        parts.actions
+          ? `<div class="screen-chrome">${parts.actions}</div>`
+          : ""
+      }
+    </div>
+  `;
+}
+
 function render(): void {
+  ensureShell();
   switch (state.currentStep) {
     case "start":
       renderStart();
@@ -199,29 +243,35 @@ function renderHistoryStep(step: HistoryStepId): void {
         ? `<p class="status-note">已標示：跳過</p>`
         : "";
 
-  app!.innerHTML = `
-    <header class="step-header">
-      <p class="eyebrow">口訣 · ${index}／5</p>
-      <h1>${title.zh}</h1>
-      <p class="lead">${title.other}</p>
-    </header>
-    ${renderHistoryNav(step)}
-    <section class="section">
-      <div class="option-grid cols-2">${optionButtons}</div>
-    </section>
-    ${noteBlock}
-    ${statusNote}
-    <div class="actions">
-      <button type="button" class="secondary" data-action="hist-back" data-step="${step}">上一步</button>
-      <button type="button" class="ghost" data-action="hist-unknown" data-step="${step}">不知道</button>
-      <button type="button" class="ghost" data-action="hist-unknown" data-step="${step}">無法回答</button>
-      <button type="button" class="ghost" data-action="hist-skip" data-step="${step}">跳過</button>
-      <button type="button" class="primary" data-action="hist-next" data-step="${step}" ${
-        canCompleteListStep(state, step) ? "" : "disabled"
-      }>下一步</button>
-    </div>
-    ${returnSummaryBar()}
-  `;
+  getView().innerHTML = screenLayout({
+    header: `
+      <header class="step-header">
+        <p class="eyebrow">口訣 · ${index}／5</p>
+        <h1>${title.zh}</h1>
+        <p class="lead">${title.other}</p>
+      </header>
+      ${renderHistoryNav(step)}
+    `,
+    body: `
+      <section class="section grow">
+        <div class="option-grid cols-2 fill-grid">${optionButtons}</div>
+      </section>
+      ${noteBlock}
+      ${statusNote}
+    `,
+    actions: `
+      <div class="actions">
+        <button type="button" class="secondary" data-action="hist-back" data-step="${step}">上一步</button>
+        <button type="button" class="ghost" data-action="hist-unknown" data-step="${step}">不知道</button>
+        <button type="button" class="ghost" data-action="hist-unknown" data-step="${step}">無法回答</button>
+        <button type="button" class="ghost" data-action="hist-skip" data-step="${step}">跳過</button>
+        <button type="button" class="primary" data-action="hist-next" data-step="${step}" ${
+          canCompleteListStep(state, step) ? "" : "disabled"
+        }>下一步</button>
+      </div>
+      ${returnSummaryBar()}
+    `,
+  });
 }
 
 function renderStart(): void {
@@ -258,28 +308,32 @@ function renderStart(): void {
     `;
   }).join("");
 
-  app!.innerHTML = `
-    <h1>救護現場雙語溝通輔助</h1>
-    <p class="lead">救護人員操作；傷病患／家屬指選。中文為錨，同屏雙語。</p>
-    <aside class="disclaimer" role="note">${DISCLAIMER_ZH}</aside>
-
-    <section class="section">
-      <h2>選擇第二語</h2>
-      <div class="option-grid cols-2 lang-grid">${langButtons}</div>
-    </section>
-
-    <section class="section">
-      <h2>誰在回答</h2>
-      <div class="option-grid cols-2">${informantButtons}</div>
-    </section>
-
-    <button type="button" class="primary" data-action="begin" ${
-      canBeginInterview(state) ? "" : "disabled"
-    }>
-      ${state.returnToSummary ? "回摘要" : "開始問診"}
-    </button>
-    ${returnSummaryBar()}
-  `;
+  getView().innerHTML = screenLayout({
+    header: `
+      <header class="step-header">
+        <h1>救護現場雙語溝通輔助</h1>
+        <p class="lead">救護人員操作；傷病患／家屬指選。中文為錨，同屏雙語。</p>
+      </header>
+    `,
+    body: `
+      <section class="section grow">
+        <h2>選擇第二語</h2>
+        <div class="option-grid cols-2 lang-grid fill-grid">${langButtons}</div>
+      </section>
+      <section class="section">
+        <h2>誰在回答</h2>
+        <div class="option-grid cols-2">${informantButtons}</div>
+      </section>
+    `,
+    actions: `
+      <button type="button" class="primary" data-action="begin" ${
+        canBeginInterview(state) ? "" : "disabled"
+      }>
+        ${state.returnToSummary ? "回摘要" : "開始問診"}
+      </button>
+      ${returnSummaryBar()}
+    `,
+  });
 }
 
 function bilingualButtonLabel(labels: BilingualText): string {
@@ -330,17 +384,21 @@ function renderChiefComplaint1(): void {
       .join("");
 
     const regionPair = bilingualPair(drillRegion.labels, secondLang());
-    app!.innerHTML = `
-      <header class="step-header">
-        <p class="eyebrow">主訴 · 1／2</p>
-        <h1>${regionPair.zh} — 更精確位置</h1>
-        <p class="lead">${regionPair.other} — finer location (optional)</p>
-      </header>
-      <div class="option-grid">${subButtons}</div>
-      <div class="actions">
-        <button type="button" class="secondary" data-action="cc1-drill-done">完成細分／略過</button>
-      </div>
-    `;
+    getView().innerHTML = screenLayout({
+      header: `
+        <header class="step-header">
+          <p class="eyebrow">主訴 · 1／2</p>
+          <h1>${regionPair.zh} — 更精確位置</h1>
+          <p class="lead">${regionPair.other} — finer location (optional)</p>
+        </header>
+      `,
+      body: `<div class="option-grid cols-2 fill-grid">${subButtons}</div>`,
+      actions: `
+        <div class="actions">
+          <button type="button" class="secondary" data-action="cc1-drill-done">完成細分／略過</button>
+        </div>
+      `,
+    });
     return;
   }
 
@@ -387,36 +445,40 @@ function renderChiefComplaint1(): void {
   const where = bilingualPair(UI_COPY.cc1Where, secondLang());
   const whereOpt = bilingualPair(UI_COPY.cc1WhereOptional, secondLang());
 
-  app!.innerHTML = `
-    <header class="step-header">
-      <p class="eyebrow">主訴 · 1／2</p>
-      <h1>${title.zh}</h1>
-      <p class="lead">${title.other}</p>
-    </header>
-
-    <section class="section">
-      <h2>${what.zh} · ${what.other}</h2>
-      <div class="option-grid cols-2">${complaintButtons}</div>
-    </section>
-
-    <section class="section ${showBody ? "" : "is-disabled"}">
-      <h2>${where.zh} · ${where.other}${showBody ? "" : ` ${whereOpt.zh}`}</h2>
-      ${bodyMap}
-    </section>
-
-    ${statusNote}
-
-    <div class="actions">
-      <button type="button" class="secondary" data-action="cc1-back">上一步</button>
-      <button type="button" class="ghost" data-action="cc1-unknown">不知道</button>
-      <button type="button" class="ghost" data-action="cc1-unknown">無法回答</button>
-      <button type="button" class="ghost" data-action="cc1-skip">跳過</button>
-      <button type="button" class="primary" data-action="cc1-next" ${
-        canCompleteChiefComplaint1(state) ? "" : "disabled"
-      }>下一步</button>
-    </div>
-    ${returnSummaryBar()}
-  `;
+  getView().innerHTML = screenLayout({
+    header: `
+      <header class="step-header">
+        <p class="eyebrow">主訴 · 1／2</p>
+        <h1>${title.zh}</h1>
+        <p class="lead">${title.other}</p>
+      </header>
+    `,
+    body: `
+      <div class="split-panels">
+        <section class="section grow">
+          <h2>${what.zh} · ${what.other}</h2>
+          <div class="option-grid cols-2 fill-grid">${complaintButtons}</div>
+        </section>
+        <section class="section grow ${showBody ? "" : "is-disabled"}">
+          <h2>${where.zh} · ${where.other}${showBody ? "" : ` ${whereOpt.zh}`}</h2>
+          ${bodyMap}
+        </section>
+      </div>
+      ${statusNote}
+    `,
+    actions: `
+      <div class="actions">
+        <button type="button" class="secondary" data-action="cc1-back">上一步</button>
+        <button type="button" class="ghost" data-action="cc1-unknown">不知道</button>
+        <button type="button" class="ghost" data-action="cc1-unknown">無法回答</button>
+        <button type="button" class="ghost" data-action="cc1-skip">跳過</button>
+        <button type="button" class="primary" data-action="cc1-next" ${
+          canCompleteChiefComplaint1(state) ? "" : "disabled"
+        }>下一步</button>
+      </div>
+      ${returnSummaryBar()}
+    `,
+  });
 }
 
 function renderChiefComplaint2(): void {
@@ -508,61 +570,62 @@ function renderChiefComplaint2(): void {
   const period = bilingualPair(UI_COPY.cc2Period, secondLang());
   const painTitle = bilingualPair(UI_COPY.cc2Pain, secondLang());
 
-  app!.innerHTML = `
-    <header class="step-header">
-      <p class="eyebrow">主訴 · 2／2</p>
-      <h1>${title.zh}</h1>
-      <p class="lead">${title.other}</p>
-    </header>
-
-    <section class="section">
-      <h2>${quality.zh} · ${quality.other}</h2>
-      <div class="option-grid cols-2">${qualityButtons}</div>
-    </section>
-
-    <section class="section">
-      <h2>${duration.zh} · ${duration.other}</h2>
-      <div class="option-grid cols-2">${durationButtons}</div>
-    </section>
-
-    <section class="section">
-      <h2>${period.zh} · ${period.other}</h2>
-      <div class="option-grid cols-2">${periodButtons}</div>
-    </section>
-
-    <section class="section emt-only">
-      <h2>EMT 細調時間（選填）</h2>
-      <input
-        class="refine-input"
-        type="text"
-        data-action="cc2-refine"
-        placeholder="例如：約 14:10 開始／發作已 25 分鐘"
-        value="${escapeAttr(detail.timeRefine)}"
-      />
-    </section>
-
-    ${
-      pain
-        ? `<section class="section">
-      <h2>${painTitle.zh} · ${painTitle.other}</h2>
-      <div class="pain-scale">${painButtons}</div>
-    </section>`
-        : ""
-    }
-
-    ${statusNote}
-
-    <div class="actions">
-      <button type="button" class="secondary" data-action="cc2-back">上一步</button>
-      <button type="button" class="ghost" data-action="cc2-unknown">不知道</button>
-      <button type="button" class="ghost" data-action="cc2-unknown">無法回答</button>
-      <button type="button" class="ghost" data-action="cc2-skip">跳過</button>
-      <button type="button" class="primary" data-action="cc2-next" ${
-        canCompleteChiefComplaint2(state) ? "" : "disabled"
-      }>下一步</button>
-    </div>
-    ${returnSummaryBar()}
-  `;
+  getView().innerHTML = screenLayout({
+    header: `
+      <header class="step-header">
+        <p class="eyebrow">主訴 · 2／2</p>
+        <h1>${title.zh}</h1>
+        <p class="lead">${title.other}</p>
+      </header>
+    `,
+    body: `
+      <section class="section">
+        <h2>${quality.zh} · ${quality.other}</h2>
+        <div class="option-grid cols-3">${qualityButtons}</div>
+      </section>
+      <div class="twin-sections">
+        <section class="section">
+          <h2>${duration.zh} · ${duration.other}</h2>
+          <div class="option-grid cols-2">${durationButtons}</div>
+        </section>
+        <section class="section">
+          <h2>${period.zh} · ${period.other}</h2>
+          <div class="option-grid cols-2">${periodButtons}</div>
+        </section>
+      </div>
+      <section class="section emt-only compact">
+        <h2>EMT 細調時間（選填）</h2>
+        <input
+          class="refine-input"
+          type="text"
+          data-action="cc2-refine"
+          placeholder="例如：約 14:10 開始／發作已 25 分鐘"
+          value="${escapeAttr(detail.timeRefine)}"
+        />
+      </section>
+      ${
+        pain
+          ? `<section class="section compact">
+        <h2>${painTitle.zh} · ${painTitle.other}</h2>
+        <div class="pain-scale">${painButtons}</div>
+      </section>`
+          : ""
+      }
+      ${statusNote}
+    `,
+    actions: `
+      <div class="actions">
+        <button type="button" class="secondary" data-action="cc2-back">上一步</button>
+        <button type="button" class="ghost" data-action="cc2-unknown">不知道</button>
+        <button type="button" class="ghost" data-action="cc2-unknown">無法回答</button>
+        <button type="button" class="ghost" data-action="cc2-skip">跳過</button>
+        <button type="button" class="primary" data-action="cc2-next" ${
+          canCompleteChiefComplaint2(state) ? "" : "disabled"
+        }>下一步</button>
+      </div>
+      ${returnSummaryBar()}
+    `,
+  });
 }
 
 function renderBodyMap(
@@ -610,18 +673,22 @@ function renderOtherSymptoms(): void {
       })
       .join("");
     const regionPair = bilingualPair(drillRegion.labels, secondLang());
-    app!.innerHTML = `
-      <header class="step-header">
-        <p class="eyebrow">感 · 二次掃描</p>
-        <h1>${regionPair.zh} — 更精確位置</h1>
-        <p class="lead">${regionPair.other}</p>
-      </header>
-      <div class="option-grid">${subButtons}</div>
-      <div class="actions">
-        <button type="button" class="secondary" data-action="sense-drill-done">完成細分／略過</button>
-      </div>
-      ${returnSummaryBar()}
-    `;
+    getView().innerHTML = screenLayout({
+      header: `
+        <header class="step-header">
+          <p class="eyebrow">感 · 二次掃描</p>
+          <h1>${regionPair.zh} — 更精確位置</h1>
+          <p class="lead">${regionPair.other}</p>
+        </header>
+      `,
+      body: `<div class="option-grid cols-2 fill-grid">${subButtons}</div>`,
+      actions: `
+        <div class="actions">
+          <button type="button" class="secondary" data-action="sense-drill-done">完成細分／略過</button>
+        </div>
+        ${returnSummaryBar()}
+      `,
+    });
     return;
   }
 
@@ -647,36 +714,40 @@ function renderOtherSymptoms(): void {
   const symptoms = bilingualPair(UI_COPY.senseSymptoms, secondLang());
   const body = bilingualPair(UI_COPY.senseBody, secondLang());
 
-  app!.innerHTML = `
-    <header class="step-header">
-      <p class="eyebrow">感</p>
-      <h1>${title.zh}</h1>
-      <p class="lead">${title.other} · ${lead.other}</p>
-    </header>
-
-    <section class="section">
-      <h2>${symptoms.zh} · ${symptoms.other}</h2>
-      <div class="option-grid cols-2">${symptomButtons}</div>
-    </section>
-
-    <section class="section ${exclusive ? "is-disabled" : ""}">
-      <h2>${body.zh} · ${body.other}</h2>
-      ${renderBodyMap(detail.bodyRegionIds, "sense-body")}
-    </section>
-
-    ${statusNote}
-
-    <div class="actions">
-      <button type="button" class="secondary" data-action="sense-back">上一步</button>
-      <button type="button" class="ghost" data-action="sense-unknown">不知道</button>
-      <button type="button" class="ghost" data-action="sense-unknown">無法回答</button>
-      <button type="button" class="ghost" data-action="sense-skip">跳過</button>
-      <button type="button" class="primary" data-action="sense-next" ${
-        canCompleteOtherSymptoms(state) ? "" : "disabled"
-      }>看摘要</button>
-    </div>
-    ${returnSummaryBar()}
-  `;
+  getView().innerHTML = screenLayout({
+    header: `
+      <header class="step-header">
+        <p class="eyebrow">感</p>
+        <h1>${title.zh}</h1>
+        <p class="lead">${title.other} · ${lead.other}</p>
+      </header>
+    `,
+    body: `
+      <div class="split-panels">
+        <section class="section grow">
+          <h2>${symptoms.zh} · ${symptoms.other}</h2>
+          <div class="option-grid cols-2 fill-grid">${symptomButtons}</div>
+        </section>
+        <section class="section grow ${exclusive ? "is-disabled" : ""}">
+          <h2>${body.zh} · ${body.other}</h2>
+          ${renderBodyMap(detail.bodyRegionIds, "sense-body")}
+        </section>
+      </div>
+      ${statusNote}
+    `,
+    actions: `
+      <div class="actions">
+        <button type="button" class="secondary" data-action="sense-back">上一步</button>
+        <button type="button" class="ghost" data-action="sense-unknown">不知道</button>
+        <button type="button" class="ghost" data-action="sense-unknown">無法回答</button>
+        <button type="button" class="ghost" data-action="sense-skip">跳過</button>
+        <button type="button" class="primary" data-action="sense-next" ${
+          canCompleteOtherSymptoms(state) ? "" : "disabled"
+        }>看摘要</button>
+      </div>
+      ${returnSummaryBar()}
+    `,
+  });
 }
 
 function renderSummary(): void {
@@ -693,20 +764,23 @@ function renderSummary(): void {
     })
     .join("");
 
-  app!.innerHTML = `
-    <header class="step-header">
-      <p class="eyebrow">本機摘要</p>
-      <h1>現場資訊彙整</h1>
-      <p class="lead">可複製後貼到紀錄；結束即清除。</p>
-    </header>
-    <aside class="disclaimer" role="note">${DISCLAIMER_ZH}</aside>
-    <div class="summary-list">${sections}</div>
-    <div class="actions">
-      <button type="button" class="secondary" data-action="summary-copy">複製摘要</button>
-      <button type="button" class="primary" data-action="summary-finish">結束／新案件</button>
-    </div>
-    <p class="copy-status" data-copy-status hidden></p>
-  `;
+  getView().innerHTML = screenLayout({
+    header: `
+      <header class="step-header">
+        <p class="eyebrow">本機摘要</p>
+        <h1>現場資訊彙整</h1>
+        <p class="lead">可複製後貼到紀錄；結束即清除。</p>
+      </header>
+    `,
+    body: `<div class="summary-list fill-grid">${sections}</div>`,
+    actions: `
+      <div class="actions">
+        <button type="button" class="secondary" data-action="summary-copy">複製摘要</button>
+        <button type="button" class="primary" data-action="summary-finish">結束／新案件</button>
+      </div>
+      <p class="copy-status" data-copy-status hidden></p>
+    `,
+  });
 }
 
 function escapeAttr(value: string): string {

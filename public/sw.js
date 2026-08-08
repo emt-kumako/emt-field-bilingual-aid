@@ -1,5 +1,5 @@
 /* Field Bilingual Aid — offline shell (runtime cache after first online load). */
-const CACHE = "field-bilingual-aid-v1";
+const CACHE = "field-bilingual-aid-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -13,6 +13,7 @@ self.addEventListener("install", (event) => {
           "./icons/icon.svg",
           "./icons/apple-touch-icon.png",
           "./icons/icon-512.png",
+          "./brand/zxb-logo.png",
         ]),
       )
       // Hashed JS/CSS are cached on first successful fetch (see fetch handler).
