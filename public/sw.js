@@ -3,9 +3,18 @@ const CACHE = "field-bilingual-aid-v1";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) =>
-      cache.addAll(["./", "./index.html", "./manifest.webmanifest", "./icons/icon.svg"]),
-    ).then(() => self.skipWaiting()),
+    caches
+      .open(CACHE)
+      .then((cache) =>
+        cache.addAll([
+          "./",
+          "./index.html",
+          "./manifest.webmanifest",
+          "./icons/icon.svg",
+        ]),
+      )
+      // Hashed JS/CSS are cached on first successful fetch (see fetch handler).
+      .then(() => self.skipWaiting()),
   );
 });
 

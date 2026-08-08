@@ -214,6 +214,7 @@ function renderHistoryStep(step: HistoryStepId): void {
     <div class="actions">
       <button type="button" class="secondary" data-action="hist-back" data-step="${step}">上一步</button>
       <button type="button" class="ghost" data-action="hist-unknown" data-step="${step}">不知道</button>
+      <button type="button" class="ghost" data-action="hist-unknown" data-step="${step}">無法回答</button>
       <button type="button" class="ghost" data-action="hist-skip" data-step="${step}">跳過</button>
       <button type="button" class="primary" data-action="hist-next" data-step="${step}" ${
         canCompleteListStep(state, step) ? "" : "disabled"
@@ -408,6 +409,7 @@ function renderChiefComplaint1(): void {
     <div class="actions">
       <button type="button" class="secondary" data-action="cc1-back">上一步</button>
       <button type="button" class="ghost" data-action="cc1-unknown">不知道</button>
+      <button type="button" class="ghost" data-action="cc1-unknown">無法回答</button>
       <button type="button" class="ghost" data-action="cc1-skip">跳過</button>
       <button type="button" class="primary" data-action="cc1-next" ${
         canCompleteChiefComplaint1(state) ? "" : "disabled"
@@ -553,6 +555,7 @@ function renderChiefComplaint2(): void {
     <div class="actions">
       <button type="button" class="secondary" data-action="cc2-back">上一步</button>
       <button type="button" class="ghost" data-action="cc2-unknown">不知道</button>
+      <button type="button" class="ghost" data-action="cc2-unknown">無法回答</button>
       <button type="button" class="ghost" data-action="cc2-skip">跳過</button>
       <button type="button" class="primary" data-action="cc2-next" ${
         canCompleteChiefComplaint2(state) ? "" : "disabled"
@@ -666,6 +669,7 @@ function renderOtherSymptoms(): void {
     <div class="actions">
       <button type="button" class="secondary" data-action="sense-back">上一步</button>
       <button type="button" class="ghost" data-action="sense-unknown">不知道</button>
+      <button type="button" class="ghost" data-action="sense-unknown">無法回答</button>
       <button type="button" class="ghost" data-action="sense-skip">跳過</button>
       <button type="button" class="primary" data-action="sense-next" ${
         canCompleteOtherSymptoms(state) ? "" : "disabled"
