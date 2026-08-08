@@ -16,7 +16,7 @@ export {
   type ScreenFacts,
   type Slot,
   type ViewFacts,
-} from "./session.js";
+} from "./orchestrate.js";
 export {
   nextSelectedIds,
   type OptionMeta,

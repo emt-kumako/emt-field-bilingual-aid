@@ -37,7 +37,7 @@ describe("bilingual presentation", () => {
     expect(bilingualSectionTitle(sample, "en")).toBe("Pain · 疼痛");
   });
 
-  it("supports chinese primacy for summary-style display", () => {
+  it("supports chinese primacy when callers request it", () => {
     expect(orderPair({ zh: "疼痛", other: "Pain" }, "chinese")).toEqual({
       primary: "疼痛",
       secondary: "Pain",

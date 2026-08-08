@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createCase } from "./case-session.js";
-import { apply, viewFacts } from "./session.js";
+import { apply, viewFacts } from "./orchestrate.js";
 
 describe("CaseSession apply / viewFacts", () => {
   it("keeps Start phase on Case and advances language → informant → interview", () => {
@@ -99,5 +99,31 @@ describe("CaseSession apply / viewFacts", () => {
     state = apply(state, { type: "nav", move: "back" });
     expect(state.currentStep).toBe("start");
     expect(state.startPhase).toBe("informant");
+  });
+
+  it("keeps unknown and skip available when Next is soft-gated", () => {
+    let state = createCase();
+    state = apply(state, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, { type: "edit", slot: "informant", value: "self" });
+    state = apply(state, { type: "nav", move: "next" });
+    expect(viewFacts(state).gate.nextEnabled).toBe(false);
+
+    const blockedNext = apply(state, { type: "nav", move: "next" });
+    expect(blockedNext.currentStep).toBe("chief_complaint_1");
+
+    let unknown = apply(state, { type: "nav", move: "unknown" });
+    expect(unknown.answers.chief_complaint_1?.status).toBe("unknown");
+    unknown = apply(unknown, { type: "nav", move: "next" });
+    expect(unknown.currentStep).toBe("chief_complaint_quality");
+
+    let skipped = apply(state, { type: "nav", move: "skip" });
+    expect(skipped.answers.chief_complaint_1?.status).toBe("skipped");
+    skipped = apply(skipped, { type: "nav", move: "next" });
+    expect(skipped.currentStep).toBe("chief_complaint_quality");
   });
 });

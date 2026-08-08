@@ -20,10 +20,8 @@ import { ACCOMPANYING_SYMPTOMS } from "./catalog/other-symptoms.js";
 import { UI_COPY } from "./catalog/ui-copy.js";
 import {
   apply,
-  buildSummarySections,
   createCase,
   formatDurationForLang,
-  formatSummaryText,
   getChiefComplaint1Detail,
   getChiefComplaintQualityDetail,
   getChiefComplaintDurationDetail,
@@ -1069,7 +1067,10 @@ function renderSummary(): void {
   const edit = bilingualInline(SUMMARY_COPY.edit, lang, SUMMARY_PRIMACY);
   const copyHint = bilingualInline(SUMMARY_COPY.copyHint, lang, SUMMARY_PRIMACY);
 
-  const sections = buildSummarySections(state)
+  const facts = viewFacts(state);
+  const summaryScreen =
+    facts.screen.step === "summary" ? facts.screen : null;
+  const sections = (summaryScreen?.sections ?? [])
     .map((s) => {
       const tone = s.obtained ? "" : " is-missing";
       const label = orderPair(s.label, SUMMARY_PRIMACY);
@@ -1140,7 +1141,9 @@ app.addEventListener("click", (event) => {
   if (!action) return;
 
   if (action === "summary-copy") {
-    const text = formatSummaryText(state);
+    const screen = viewFacts(state).screen;
+    const text =
+      screen.step === "summary" ? screen.plainText : "";
     void navigator.clipboard.writeText(text).then(
       () => {
         const el = app!.querySelector<HTMLElement>("[data-copy-status]");

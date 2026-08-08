@@ -89,7 +89,7 @@ function informantName(id: Informant, lang: Lang): string {
 
 function chiefComplaintEditStep(state: CaseState): InterviewStep {
   const a1 = state.answers.chief_complaint_1;
-  const a2 = state.answers.chief_complaint_quality;
+  const aQuality = state.answers.chief_complaint_quality;
   const aDur = state.answers.chief_complaint_duration;
   const incomplete = (status: string | undefined) =>
     !status || status === "empty";
@@ -98,9 +98,9 @@ function chiefComplaintEditStep(state: CaseState): InterviewStep {
     return "chief_complaint_1";
   }
   if (
-    incomplete(a2?.status) &&
-    a2?.status !== "unknown" &&
-    a2?.status !== "skipped"
+    incomplete(aQuality?.status) &&
+    aQuality?.status !== "unknown" &&
+    aQuality?.status !== "skipped"
   ) {
     return "chief_complaint_quality";
   }
@@ -111,13 +111,13 @@ function chiefComplaintEditStep(state: CaseState): InterviewStep {
   ) {
     return "chief_complaint_duration";
   }
-  if (a2?.status === "answered") return "chief_complaint_quality";
+  if (aQuality?.status === "answered") return "chief_complaint_quality";
   if (aDur?.status === "answered") return "chief_complaint_duration";
   return "chief_complaint_1";
 }
 
 function formatChiefParts(state: CaseState, lang: Lang): string[] {
-  const a2 = state.answers.chief_complaint_quality;
+  const aQuality = state.answers.chief_complaint_quality;
   const aDur = state.answers.chief_complaint_duration;
   const d1 = getChiefComplaint1Detail(state);
   const dq = getChiefComplaintQualityDetail(state);
@@ -163,9 +163,9 @@ function formatChiefParts(state: CaseState, lang: Lang): string[] {
         },
       )}`,
     );
-  } else if (a2?.status === "unknown" || a2?.status === "skipped") {
+  } else if (aQuality?.status === "unknown" || aQuality?.status === "skipped") {
     const st =
-      a2.status === "unknown"
+      aQuality.status === "unknown"
         ? pick(SUMMARY_COPY.notObtainedUnknown, lang)
         : pick(SUMMARY_COPY.notObtainedSkipped, lang);
     parts.push(`${pick(SUMMARY_COPY.quality, lang)}：${st}`);
@@ -211,16 +211,16 @@ function formatChiefComplaint(
 ): SummarySection {
   const editStep = chiefComplaintEditStep(state);
   const a1 = state.answers.chief_complaint_1;
-  const a2 = state.answers.chief_complaint_quality;
+  const aQuality = state.answers.chief_complaint_quality;
   const aDur = state.answers.chief_complaint_duration;
   const label = line(SUMMARY_COPY.chief, lang);
 
   if (
     (a1?.status === "unknown" || a1?.status === "skipped") &&
-    (a2?.status === "unknown" ||
-      a2?.status === "skipped" ||
-      !a2 ||
-      a2.status === "empty") &&
+    (aQuality?.status === "unknown" ||
+      aQuality?.status === "skipped" ||
+      !aQuality ||
+      aQuality.status === "empty") &&
     (aDur?.status === "unknown" ||
       aDur?.status === "skipped" ||
       !aDur ||
@@ -241,7 +241,7 @@ function formatChiefComplaint(
   if (zhParts.length === 0) {
     const blocked =
       statusLine(a1?.status, lang) ??
-      statusLine(a2?.status, lang) ??
+      statusLine(aQuality?.status, lang) ??
       statusLine(aDur?.status, lang);
     return {
       key: "chief",

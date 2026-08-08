@@ -41,5 +41,5 @@ Shared ops for coarse body region, optional subregion drilldown, and clearing dr
 _Avoid_: Body map UI, hotspot layout
 
 **Bilingual primacy**:
-Which language line is shown first in a bilingual pair (`second` | `chinese`). Interview and on-screen summary are second-language-primary (Chinese secondary) so the informant can reconfirm; clipboard copy of the summary is always Chinese for the record. Presentation module: `src/presentation/bilingual.ts`.
+Which language line is shown first in a bilingual pair (`second` | `chinese`). Interview and on-screen summary are second-language-primary (Chinese secondary) so the informant can reconfirm; clipboard copy of the summary is always Chinese for the record. Presentation module owns bilingual primacy ordering; CaseSession orchestration is `apply` / `viewFacts`.
 _Avoid_: Hard-coding “other on top” in every screen

@@ -1,7 +1,6 @@
 import { isHistoryStep, type HistoryStepId } from "../catalog/history-block.js";
 import {
   beginInterview,
-  createCase,
   setInformant,
   setSecondLanguage,
   startNewCase,
@@ -536,5 +535,3 @@ export function viewFacts(state: CaseState): ViewFacts {
     screen,
   };
 }
-
-export { createCase, startNewCase };
