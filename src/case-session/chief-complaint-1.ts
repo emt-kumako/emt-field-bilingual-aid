@@ -49,38 +49,20 @@ export function needsBodyLocation(state: CaseState): boolean {
   return complaintTypesNeedBody(readDetail(state).complaintTypeIds);
 }
 
-function pruneBodyIfNotNeeded(detail: ChiefComplaint1Detail): ChiefComplaint1Detail {
-  if (complaintTypesNeedBody(detail.complaintTypeIds)) {
-    return detail;
-  }
-  return {
-    ...detail,
-    bodyRegionIds: [],
-    bodySubregionIds: [],
-    drilldownRegionId: null,
-  };
-}
-
 export function toggleComplaintType(state: CaseState, complaintTypeId: string): CaseState {
   const detail = readDetail(state);
   const set = new Set(detail.complaintTypeIds);
   if (set.has(complaintTypeId)) set.delete(complaintTypeId);
   else set.add(complaintTypeId);
 
-  return writeDetail(
-    state,
-    pruneBodyIfNotNeeded({
-      ...detail,
-      complaintTypeIds: [...set],
-    }),
-  );
+  return writeDetail(state, {
+    ...detail,
+    complaintTypeIds: [...set],
+  });
 }
 
 export function toggleBodyRegion(state: CaseState, regionId: string): CaseState {
   const detail = readDetail(state);
-  if (!complaintTypesNeedBody(detail.complaintTypeIds)) {
-    return state;
-  }
 
   const region = getBodyRegion(regionId);
   if (!region) return state;

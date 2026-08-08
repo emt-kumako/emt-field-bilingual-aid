@@ -4,10 +4,13 @@ export const SECOND_LANGUAGES = [
   "en",
   "vi",
   "id",
-  "ja",
-  "ko",
   "fil",
   "th",
+  "ja",
+  "ko",
+  "de",
+  "fr",
+  "es",
 ] as const satisfies readonly SecondLanguage[];
 
 /** Chinese anchor + every selectable second language (no silent gaps). */

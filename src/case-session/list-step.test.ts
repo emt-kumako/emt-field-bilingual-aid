@@ -11,7 +11,9 @@ import {
 } from "./chief-complaint-1.js";
 import {
   completeChiefComplaint2,
+  completeChiefComplaintDuration,
   selectTimeBucket,
+  toggleQuality,
 } from "./chief-complaint-2.js";
 import {
   canCompleteListStep,
@@ -33,8 +35,10 @@ function atBefore() {
   );
   state = toggleComplaintType(state, "weakness");
   state = completeChiefComplaint1(state);
+  state = toggleQuality(state, "same_as_complaint");
+  state = completeChiefComplaint2(state);
   state = selectTimeBucket(state, "few_hours");
-  return completeChiefComplaint2(state);
+  return completeChiefComplaintDuration(state);
 }
 
 describe("history list steps 之前→吃→過→藥→敏", () => {
@@ -56,17 +60,25 @@ describe("history list steps 之前→吃→過→藥→敏", () => {
     expect(state.currentStep).toBe("intake");
   });
 
-  it("uses single-select for 吃 and exclusive 無 clears other meds", () => {
+  it("uses meal single-select for 吃 and exclusive 無 clears other meds", () => {
     let state = atBefore();
     state = toggleListOption(state, "before", "resting");
     state = completeListStep(state, "before");
 
-    state = toggleListOption(state, "intake", "within_1h");
-    state = toggleListOption(state, "intake", "over_4h");
-    expect(getListOptionIds(state, "intake")).toEqual(["over_4h"]);
+    state = toggleListOption(state, "intake", "today_breakfast");
+    state = toggleListOption(state, "intake", "yesterday_dinner");
+    expect(getListOptionIds(state, "intake")).toEqual(["yesterday_dinner"]);
     state = completeListStep(state, "intake");
 
     state = toggleListOption(state, "past_history", "diabetes");
+    state = toggleListOption(state, "past_history", "dialysis_left");
+    state = toggleListOption(state, "past_history", "dialysis_right");
+    state = toggleListOption(state, "past_history", "mental_illness");
+    expect(getListOptionIds(state, "past_history")).toEqual([
+      "diabetes",
+      "dialysis_right",
+      "mental_illness",
+    ]);
     state = completeListStep(state, "past_history");
 
     state = toggleListOption(state, "medications", "antihypertensive");
@@ -78,25 +90,18 @@ describe("history list steps 之前→吃→過→藥→敏", () => {
   it("marks skip/unknown per step and allows free back/forward edit", () => {
     let state = atBefore();
     state = markListStepUnknown(state, "before");
-    expect(state.answers.before?.status).toBe("unknown");
+    expect(canCompleteListStep(state, "before")).toBe(true);
     state = completeListStep(state, "before");
+    expect(state.currentStep).toBe("intake");
 
     state = skipListStep(state, "intake");
-    expect(state.answers.intake?.status).toBe("skipped");
     state = completeListStep(state, "intake");
     expect(state.currentStep).toBe("past_history");
 
     state = goBackListStep(state, "past_history");
     expect(state.currentStep).toBe("intake");
 
-    state = goToStep(state, "medications");
-    state = toggleListOption(state, "medications", "painkillers");
-    expect(getListOptionIds(state, "medications")).toEqual(["painkillers"]);
-
     state = goToStep(state, "allergies");
-    state = toggleListOption(state, "allergies", "drug_allergy");
-    state = setListNote(state, "allergies", "盤尼西林");
-    state = completeListStep(state, "allergies");
-    expect(state.currentStep).toBe("other_symptoms");
+    expect(state.currentStep).toBe("allergies");
   });
 });

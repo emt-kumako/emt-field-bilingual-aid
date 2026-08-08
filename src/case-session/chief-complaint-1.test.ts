@@ -48,20 +48,21 @@ describe("chief complaint step 1", () => {
     expect(getChiefComplaint1Detail(state).drilldownRegionId).toBeNull();
   });
 
-  it("allows non-localized complaints without body selection", () => {
+  it("allows non-localized complaints without body, but body stays optional", () => {
     let state = started();
-    state = toggleComplaintType(state, "weakness");
+    state = toggleComplaintType(state, "breathing");
     expect(needsBodyLocation(state)).toBe(false);
+    expect(canCompleteChiefComplaint1(state)).toBe(true);
 
     state = toggleBodyRegion(state, "chest");
-    expect(getChiefComplaint1Detail(state).bodyRegionIds).toEqual([]);
+    expect(getChiefComplaint1Detail(state).bodyRegionIds).toEqual(["chest"]);
     expect(canCompleteChiefComplaint1(state)).toBe(true);
 
     state = completeChiefComplaint1(state);
     expect(state.currentStep).toBe("chief_complaint_2");
   });
 
-  it("clears body when switching from localized to only non-localized", () => {
+  it("keeps optional body when switching from localized to only non-localized", () => {
     let state = started();
     state = toggleComplaintType(state, "pain");
     state = toggleBodyRegion(state, "abdomen");
@@ -70,7 +71,7 @@ describe("chief complaint step 1", () => {
 
     const detail = getChiefComplaint1Detail(state);
     expect(detail.complaintTypeIds).toEqual(["dizziness"]);
-    expect(detail.bodyRegionIds).toEqual([]);
+    expect(detail.bodyRegionIds).toEqual(["abdomen"]);
     expect(needsBodyLocation(state)).toBe(false);
   });
 

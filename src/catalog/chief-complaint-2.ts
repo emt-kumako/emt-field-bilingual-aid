@@ -4,6 +4,8 @@ import { L, type BilingualText } from "./labels.js";
 export type QualityOption = {
   id: string;
   painRelated: boolean;
+  /** Selecting this clears other qualities (e.g. 同哪裡不舒服). */
+  exclusive?: boolean;
   labels: BilingualText;
 };
 
@@ -31,6 +33,9 @@ export const TIME_UNITS: TimeUnitOption[] = [
       ko: "분",
       fil: "minuto",
       th: "นาที",
+      de: "Minuten",
+      fr: "minutes",
+      es: "minutos",
     }),
   },
   {
@@ -43,6 +48,9 @@ export const TIME_UNITS: TimeUnitOption[] = [
       ko: "시간",
       fil: "oras",
       th: "ชั่วโมง",
+      de: "Stunden",
+      fr: "heures",
+      es: "horas",
     }),
   },
   {
@@ -55,6 +63,9 @@ export const TIME_UNITS: TimeUnitOption[] = [
       ko: "일",
       fil: "araw",
       th: "วัน",
+      de: "Tage",
+      fr: "jours",
+      es: "días",
     }),
   },
 ];
@@ -67,7 +78,10 @@ const ABOUT_PREFIX = L("約", {
   ko: "약",
   fil: "Mga",
   th: "ประมาณ",
-});
+      de: "Etwa",
+      fr: "Environ",
+      es: "Aproximadamente",
+    });
 
 /** Bilingual “約 N 分鐘／小時／日” display for numeric duration. */
 export function formatApproxDuration(
@@ -89,6 +103,23 @@ export function getTimeUnit(id: string): TimeUnitOption | undefined {
 
 export const QUALITY_OPTIONS: QualityOption[] = [
   {
+    id: "same_as_complaint",
+    painRelated: false,
+    exclusive: true,
+    labels: L("同哪裡不舒服", {
+      en: "Same as the main problem",
+      vi: "Giống chỗ đang khó chịu",
+      id: "Sama dengan keluhan utama",
+      ja: "主訴と同じところ",
+      ko: "불편한 곳과 같음",
+      fil: "Pareho sa problema",
+      th: "ตรงกับที่ไม่สบาย",
+      de: "Wie die Hauptbeschwerde",
+      fr: "Comme le problème principal",
+      es: "Igual a la molestia",
+    }),
+  },
+  {
     id: "pain_general",
     painRelated: false,
     labels: L("疼痛", {
@@ -99,6 +130,9 @@ export const QUALITY_OPTIONS: QualityOption[] = [
       ko: "통증",
       fil: "Sakit",
       th: "ปวด",
+      de: "Schmerz",
+      fr: "Douleur",
+      es: "Dolor",
     }),
   },
   {
@@ -112,6 +146,9 @@ export const QUALITY_OPTIONS: QualityOption[] = [
       ko: "둔한 통증",
       fil: "Mapurol / bigat",
       th: "ปวดตื้อ/แน่น",
+      de: "Dumpf / Druck",
+      fr: "Sourd / pression",
+      es: "Sordo / presión",
     }),
   },
   {
@@ -125,6 +162,9 @@ export const QUALITY_OPTIONS: QualityOption[] = [
       ko: "찌르는 통증",
       fil: "Matulis / saksak",
       th: "ปวดแปลบ",
+      de: "Stechend",
+      fr: "En coup de poignard",
+      es: "Punzante",
     }),
   },
   {
@@ -138,6 +178,9 @@ export const QUALITY_OPTIONS: QualityOption[] = [
       ko: "화끈거림",
       fil: "Nasusunog",
       th: "ปวดร้อน",
+      de: "Brennend",
+      fr: "Brûlure",
+      es: "Ardor",
     }),
   },
   {
@@ -151,6 +194,9 @@ export const QUALITY_OPTIONS: QualityOption[] = [
       ko: "조이는 느낌",
       fil: "Pumipisil",
       th: "แน่น/กดทับ",
+      de: "Drückend / eng",
+      fr: "Serré / oppressant",
+      es: "Opresivo / apretado",
     }),
   },
   {
@@ -164,6 +210,9 @@ export const QUALITY_OPTIONS: QualityOption[] = [
       ko: "욱신거림",
       fil: "Kumikirot",
       th: "ปวดตุบๆ",
+      de: "Pochen",
+      fr: "Pulsatile",
+      es: "Latido",
     }),
   },
   {
@@ -177,6 +226,9 @@ export const QUALITY_OPTIONS: QualityOption[] = [
       ko: "쥐어짜는 통증",
       fil: "Pulikat",
       th: "ปวดบิด",
+      de: "Krampfartig",
+      fr: "Crampes",
+      es: "Calambres",
     }),
   },
   {
@@ -190,6 +242,9 @@ export const QUALITY_OPTIONS: QualityOption[] = [
       ko: "숨이 안 참",
       fil: "Hindi makahinga",
       th: "หายใจไม่ออก",
+      de: "Kann nicht atmen",
+      fr: "Ne peut pas respirer",
+      es: "No puede respirar",
     }),
   },
   {
@@ -203,6 +258,9 @@ export const QUALITY_OPTIONS: QualityOption[] = [
       ko: "저림/감각 없음",
       fil: "Manhid",
       th: "ชา",
+      de: "Taubheit",
+      fr: "Engourdissement",
+      es: "Entumecimiento",
     }),
   },
   {
@@ -216,6 +274,9 @@ export const QUALITY_OPTIONS: QualityOption[] = [
       ko: "다른 느낌",
       fil: "Ibang pakiramdam",
       th: "รู้สึกอย่างอื่น",
+      de: "Anderes Gefühl",
+      fr: "Autre sensation",
+      es: "Otra sensación",
     }),
   },
 ];
@@ -232,6 +293,9 @@ export const TIME_BUCKETS: TimeBucketOption[] = [
       ko: "방금",
       fil: "Ngayon lang",
       th: "เพิ่งเกิด",
+      de: "Gerade eben",
+      fr: "À l'instant",
+      es: "Justo ahora",
     }),
   },
   {
@@ -245,6 +309,9 @@ export const TIME_BUCKETS: TimeBucketOption[] = [
       ko: "약 20분",
       fil: "Mga 20 minuto",
       th: "ประมาณ 20 นาที",
+      de: "Etwa 20 Minuten",
+      fr: "Environ 20 minutes",
+      es: "Unos 20 minutos",
     }),
   },
   {
@@ -258,6 +325,9 @@ export const TIME_BUCKETS: TimeBucketOption[] = [
       ko: "1시간 미만",
       fil: "Wala pang 1 oras",
       th: "ไม่ถึง 1 ชั่วโมง",
+      de: "Unter 1 Stunde",
+      fr: "Moins d'1 heure",
+      es: "Menos de 1 hora",
     }),
   },
   {
@@ -271,6 +341,9 @@ export const TIME_BUCKETS: TimeBucketOption[] = [
       ko: "몇 시간",
       fil: "Ilang oras",
       th: "หลายชั่วโมง",
+      de: "Vor ein paar Stunden",
+      fr: "Il y a quelques heures",
+      es: "Hace unas horas",
     }),
   },
   {
@@ -284,6 +357,9 @@ export const TIME_BUCKETS: TimeBucketOption[] = [
       ko: "오늘 아침",
       fil: "Kaninang umaga",
       th: "เช้านี้",
+      de: "Heute Morgen",
+      fr: "Ce matin",
+      es: "Esta mañana",
     }),
   },
   {
@@ -297,6 +373,9 @@ export const TIME_BUCKETS: TimeBucketOption[] = [
       ko: "오늘",
       fil: "Ngayong araw",
       th: "วันนี้",
+      de: "Heute",
+      fr: "Aujourd'hui",
+      es: "Hoy",
     }),
   },
   {
@@ -310,6 +389,9 @@ export const TIME_BUCKETS: TimeBucketOption[] = [
       ko: "어제",
       fil: "Kahapon",
       th: "เมื่อวาน",
+      de: "Gestern",
+      fr: "Hier",
+      es: "Ayer",
     }),
   },
   {
@@ -323,9 +405,22 @@ export const TIME_BUCKETS: TimeBucketOption[] = [
       ko: "어제 이전",
       fil: "Bago ang kahapon",
       th: "ก่อนเมื่อวาน",
+      de: "Vor gestern",
+      fr: "Avant hier",
+      es: "Antes de ayer",
     }),
   },
 ];
+
+export function getQualityOption(id: string): QualityOption | undefined {
+  return QUALITY_OPTIONS.find((q) => q.id === id);
+}
+
+/** Pain complaints see all qualities; others only non-pain-related options. */
+export function visibleQualityOptions(showsPain: boolean): QualityOption[] {
+  if (showsPain) return [...QUALITY_OPTIONS];
+  return QUALITY_OPTIONS.filter((q) => !q.painRelated);
+}
 
 export function getTimeBucket(id: string): TimeBucketOption | undefined {
   return TIME_BUCKETS.find((b) => b.id === id);

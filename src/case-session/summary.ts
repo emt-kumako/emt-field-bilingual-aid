@@ -33,7 +33,7 @@ export type SummarySection = {
 const INFORMANT_ZH: Record<Informant, string> = {
   self: "本人",
   family: "家屬",
-  friend: "友人",
+  friend: "有人",
   other: "其他",
 };
 
@@ -55,18 +55,56 @@ function joinZh(ids: string[], lookup: (id: string) => string | undefined): stri
     .join("、");
 }
 
-function formatChiefComplaint(state: CaseState): SummarySection {
-  const editStep: InterviewStep = "chief_complaint_1";
+function chiefComplaintEditStep(state: CaseState): InterviewStep {
   const a1 = state.answers.chief_complaint_1;
   const a2 = state.answers.chief_complaint_2;
-  const blocked = statusLabel(a1?.status) ?? statusLabel(a2?.status);
-  // If either step unknown/skipped and both not answered usefully, summarize status.
+  const aDur = state.answers.chief_complaint_duration;
+  const incomplete = (status: string | undefined) =>
+    !status || status === "empty";
+
+  if (incomplete(a1?.status) && a1?.status !== "unknown" && a1?.status !== "skipped") {
+    return "chief_complaint_1";
+  }
+  if (
+    incomplete(a2?.status) &&
+    a2?.status !== "unknown" &&
+    a2?.status !== "skipped"
+  ) {
+    return "chief_complaint_2";
+  }
+  if (
+    incomplete(aDur?.status) &&
+    aDur?.status !== "unknown" &&
+    aDur?.status !== "skipped"
+  ) {
+    return "chief_complaint_duration";
+  }
+  // All answered: jump to quality (middle) for typical refine; where/what via nav.
+  if (a2?.status === "answered") return "chief_complaint_2";
+  if (aDur?.status === "answered") return "chief_complaint_duration";
+  return "chief_complaint_1";
+}
+
+function formatChiefComplaint(state: CaseState): SummarySection {
+  const editStep = chiefComplaintEditStep(state);
+  const a1 = state.answers.chief_complaint_1;
+  const a2 = state.answers.chief_complaint_2;
+  const aDur = state.answers.chief_complaint_duration;
+  const blocked =
+    statusLabel(a1?.status) ??
+    statusLabel(a2?.status) ??
+    statusLabel(aDur?.status);
+
   if (
     (a1?.status === "unknown" || a1?.status === "skipped") &&
     (a2?.status === "unknown" ||
       a2?.status === "skipped" ||
       !a2 ||
-      a2.status === "empty")
+      a2.status === "empty") &&
+    (aDur?.status === "unknown" ||
+      aDur?.status === "skipped" ||
+      !aDur ||
+      aDur.status === "empty")
   ) {
     return {
       key: "chief",
@@ -112,6 +150,8 @@ function formatChiefComplaint(state: CaseState): SummarySection {
         (id) => QUALITY_OPTIONS.find((q) => q.id === id)?.labels.zh,
       )}`,
     );
+  } else if (a2?.status === "unknown" || a2?.status === "skipped") {
+    parts.push(`性質：${statusLabel(a2.status)?.value}`);
   }
   {
     const durationZh =
@@ -127,8 +167,8 @@ function formatChiefComplaint(state: CaseState): SummarySection {
         ? `；細調：${d2.timeRefine.trim()}`
         : "";
       parts.push(`時間：${durationZh}${refine}`);
-    } else if (a2?.status === "unknown" || a2?.status === "skipped") {
-      parts.push(`時間：${statusLabel(a2.status)?.value}`);
+    } else if (aDur?.status === "unknown" || aDur?.status === "skipped") {
+      parts.push(`時間：${statusLabel(aDur.status)?.value}`);
     } else if (d2.timeRefine.trim()) {
       parts.push(`時間：細調：${d2.timeRefine.trim()}`);
     }
@@ -174,10 +214,13 @@ function formatHistoryStep(
   }
 
   const catalog = getHistoryCatalog(step);
-  const names = joinZh(
-    answer.optionIds,
-    (id) => catalog?.options.find((o) => o.id === id)?.labels.zh,
-  );
+  const names = joinZh(answer.optionIds, (id) => {
+    const opt = catalog?.options.find((o) => o.id === id);
+    if (!opt) return undefined;
+    if (opt.group === "yesterday") return `昨天${opt.labels.zh}`;
+    if (opt.group === "today") return `今天${opt.labels.zh}`;
+    return opt.labels.zh;
+  });
   const note = answer.note.trim() ? `（備註：${answer.note.trim()}）` : "";
   if (!names && !note) {
     return {

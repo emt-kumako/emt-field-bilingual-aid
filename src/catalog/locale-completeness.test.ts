@@ -70,10 +70,13 @@ describe("locale packs", () => {
       en: "Test",
       vi: "",
       id: "Tes",
-      ja: "テスト",
-      ko: "테스트",
       fil: "Test",
       th: "ทดสอบ",
+      ja: "テスト",
+      ko: "테스트",
+      de: "Test",
+      fr: "Test",
+      es: "Prueba",
     };
     expect(() => bilingualPair(incomplete, "vi")).toThrow(MissingLocaleError);
   });

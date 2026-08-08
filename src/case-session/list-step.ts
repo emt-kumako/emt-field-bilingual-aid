@@ -80,7 +80,14 @@ export function toggleListOption(
       const opt = catalog.options.find((o) => o.id === id);
       return !opt?.exclusive;
     });
-    const set = new Set(withoutExclusive);
+    let next = withoutExclusive;
+    if (option.mutexGroup) {
+      next = next.filter((id) => {
+        const opt = catalog.options.find((o) => o.id === id);
+        return opt?.mutexGroup !== option.mutexGroup;
+      });
+    }
+    const set = new Set(next);
     if (set.has(optionId)) set.delete(optionId);
     else set.add(optionId);
     optionIds = [...set];

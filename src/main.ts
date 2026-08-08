@@ -4,10 +4,10 @@ import {
   getBodyRegion,
 } from "./catalog/chief-complaint-1.js";
 import {
-  QUALITY_OPTIONS,
   TIME_BUCKETS,
   TIME_UNITS,
   formatApproxDuration,
+  visibleQualityOptions,
 } from "./catalog/chief-complaint-2.js";
 import {
   HISTORY_STEP_ORDER,
@@ -24,12 +24,14 @@ import {
   canBeginInterview,
   canCompleteChiefComplaint1,
   canCompleteChiefComplaint2,
+  canCompleteChiefComplaintDuration,
   canCompleteListStep,
   canCompleteOtherSymptoms,
   clearBodyDrilldown,
   clearOtherBodyDrilldown,
   completeChiefComplaint1,
   completeChiefComplaint2,
+  completeChiefComplaintDuration,
   completeListStep,
   completeOtherSymptoms,
   createCase,
@@ -43,12 +45,14 @@ import {
   getOtherSymptomsDetail,
   goBackFromChiefComplaint1,
   goBackFromChiefComplaint2,
+  goBackFromChiefComplaintDuration,
   goBackFromOtherSymptoms,
   goBackListStep,
   goToStep,
   listStepNeedsNote,
   markChiefComplaint1Unknown,
   markChiefComplaint2Unknown,
+  markChiefComplaintDurationUnknown,
   markListStepUnknown,
   markOtherSymptomsUnknown,
   needsBodyLocation,
@@ -65,6 +69,7 @@ import {
   showsPainScale,
   skipChiefComplaint1,
   skipChiefComplaint2,
+  skipChiefComplaintDuration,
   skipListStep,
   skipOtherSymptoms,
   toggleAccompanyingSymptom,
@@ -124,6 +129,8 @@ function lockPageZoom(): void {
 lockPageZoom();
 
 let state: CaseState = createCase();
+/** Start flow is two pages: language → informant. */
+let startPhase: "language" | "informant" = "language";
 
 function secondLang(): SecondLanguage {
   return state.secondLanguage ?? "en";
@@ -191,7 +198,14 @@ function cc1GateNote(): string {
 function cc2GateNote(): string {
   if (canCompleteChiefComplaint2(state)) return "";
   return gateNote(
-    "請選擇性質、輸入多久了（數字＋單位）或時段／疼痛指數，或按「不知道／無法回答／跳過」",
+    "請選擇怎麼不舒服（或「同哪裡不舒服」／疼痛指數），或按「不知道／無法回答／跳過」",
+  );
+}
+
+function ccDurationGateNote(): string {
+  if (canCompleteChiefComplaintDuration(state)) return "";
+  return gateNote(
+    "請輸入多久了（數字＋單位）或時段，或按「不知道／無法回答／跳過」",
   );
 }
 
@@ -219,6 +233,9 @@ function render(): void {
       break;
     case "chief_complaint_2":
       renderChiefComplaint2();
+      break;
+    case "chief_complaint_duration":
+      renderChiefComplaintDuration();
       break;
     case "before":
     case "intake":
@@ -267,27 +284,43 @@ function renderHistoryStep(step: HistoryStepId): void {
   const catalog = getHistoryCatalog(step);
   if (!catalog) return;
 
-  const title = bilingualPair(catalog.title, secondLang());
+  const title = bilingualHeading(catalog.title);
   const selected = new Set(getListOptionIds(state, step));
   const index = HISTORY_STEP_ORDER.indexOf(step) + 1;
 
-  const optionButtons = catalog.options
-    .map((opt) => {
-      const pressed = selected.has(opt.id);
-      return `
-        <button
-          type="button"
-          class="option"
-          data-action="hist-option"
-          data-step="${step}"
-          data-id="${opt.id}"
-          aria-pressed="${pressed}"
-        >
-          ${bilingualButtonLabel(opt.labels)}
-        </button>
-      `;
-    })
-    .join("");
+  const renderOption = (opt: (typeof catalog.options)[number]) => {
+    const pressed = selected.has(opt.id);
+    return `
+      <button
+        type="button"
+        class="option"
+        data-action="hist-option"
+        data-step="${step}"
+        data-id="${opt.id}"
+        aria-pressed="${pressed}"
+      >
+        ${bilingualButtonLabel(opt.labels)}
+      </button>
+    `;
+  };
+
+  let optionButtons = "";
+  if (step === "intake") {
+    const yesterday = catalog.options.filter((o) => o.group === "yesterday");
+    const today = catalog.options.filter((o) => o.group === "today");
+    const rest = catalog.options.filter((o) => !o.group);
+    const yLabel = bilingualHeading(UI_COPY.intakeYesterday);
+    const tLabel = bilingualHeading(UI_COPY.intakeToday);
+    optionButtons = `
+      <p class="option-group-label">${yLabel.title} · ${yLabel.lead}</p>
+      <div class="option-grid cols-3">${yesterday.map(renderOption).join("")}</div>
+      <p class="option-group-label">${tLabel.title} · ${tLabel.lead}</p>
+      <div class="option-grid cols-3">${today.map(renderOption).join("")}</div>
+      <div class="option-grid cols-2" style="margin-top:0.55rem">${rest.map(renderOption).join("")}</div>
+    `;
+  } else {
+    optionButtons = `<div class="option-grid cols-2 fill-grid">${catalog.options.map(renderOption).join("")}</div>`;
+  }
 
   const noteBlock = listStepNeedsNote(state, step)
     ? `
@@ -317,14 +350,14 @@ function renderHistoryStep(step: HistoryStepId): void {
     header: `
       <header class="step-header">
         <p class="eyebrow">口訣 · ${index}／5</p>
-        <h1>${title.zh}</h1>
-        <p class="lead">${title.other}</p>
+        <h1>${title.title}</h1>
+        <p class="lead">${title.lead}</p>
       </header>
       ${renderHistoryNav(step)}
     `,
     body: `
       <section class="section grow">
-        <div class="option-grid cols-2 fill-grid">${optionButtons}</div>
+        ${optionButtons}
       </section>
       ${noteBlock}
       ${statusNote}
@@ -346,8 +379,19 @@ function renderHistoryStep(step: HistoryStepId): void {
 }
 
 function renderStart(): void {
+  if (startPhase === "informant" && state.secondLanguage) {
+    renderStartInformant();
+    return;
+  }
+  startPhase = "language";
+  renderStartLanguage();
+}
+
+function renderStartLanguage(): void {
   const langButtons = SECOND_LANGUAGE_OPTIONS.map((opt) => {
     const pressed = state.secondLanguage === opt.id;
+    const flag = LANG_FLAGS[opt.id];
+    // 主客互換：原名／第二語在上，中文在下。
     return `
       <button
         type="button"
@@ -356,28 +400,15 @@ function renderStart(): void {
         data-id="${opt.id}"
         aria-pressed="${pressed}"
       >
-        <span class="zh">${opt.zh}</span>
-        <span class="sub">${opt.native}</span>
+        <span class="zh"><span class="lang-flag" aria-hidden="true">${flag}</span> ${opt.native}</span>
+        <span class="sub">${opt.zh}</span>
       </button>
     `;
   }).join("");
 
-  const informantButtons = INFORMANT_OPTIONS.map((opt) => {
-    const pressed = state.informant === opt.id;
-    // Start screen: Chinese + English labels for EMT; second language applies after begin.
-    return `
-      <button
-        type="button"
-        class="option"
-        data-action="informant"
-        data-id="${opt.id}"
-        aria-pressed="${pressed}"
-      >
-        <span class="zh">${opt.labels.zh}</span>
-        <span class="sub">${opt.labels.en}</span>
-      </button>
-    `;
-  }).join("");
+  const langTitle = state.secondLanguage
+    ? bilingualSectionTitle(UI_COPY.selectLanguage)
+    : `${UI_COPY.selectLanguage.en} · ${UI_COPY.selectLanguage.zh}`;
 
   getView().innerHTML = screenLayout({
     header: `
@@ -387,40 +418,103 @@ function renderStart(): void {
           <span class="brand-title-main">救護現場</span>
           <span class="brand-title-sub">雙語溝通輔助</span>
         </h1>
-        <p class="lead">救護人員操作；傷病患／家屬指選。中文為錨，同屏雙語。</p>
+        <p class="lead">救護人員操作；傷病患／家屬指選。同屏雙語。</p>
       </header>
     `,
-
     body: `
       <section class="section grow">
-        <h2>選擇第二語</h2>
+        <p class="eyebrow">開場 · 1／2</p>
+        <h2>${langTitle}</h2>
         <div class="option-grid cols-2 lang-grid fill-grid">${langButtons}</div>
-      </section>
-      <section class="section">
-        <h2>誰在回答</h2>
-        <div class="option-grid cols-2">${informantButtons}</div>
       </section>
     `,
     actions: `
-      <button type="button" class="primary" data-action="begin" ${
-        canBeginInterview(state) ? "" : "disabled"
-      }>
-        ${state.returnToSummary ? "回摘要" : "開始問診"}
-      </button>
+      <button type="button" class="primary" data-action="start-lang-next" ${
+        state.secondLanguage ? "" : "disabled"
+      }>下一步</button>
       ${returnSummaryBar()}
     `,
   });
 }
 
+function renderStartInformant(): void {
+  const title = bilingualHeading(UI_COPY.informantAsking);
+  const informantButtons = INFORMANT_OPTIONS.map((opt) => {
+    const pressed = state.informant === opt.id;
+    return `
+      <button
+        type="button"
+        class="option"
+        data-action="informant"
+        data-id="${opt.id}"
+        aria-pressed="${pressed}"
+      >
+        ${bilingualButtonLabel(opt.labels)}
+      </button>
+    `;
+  }).join("");
+
+  getView().innerHTML = screenLayout({
+    header: `
+      <header class="step-header">
+        <p class="eyebrow">開場 · 2／2</p>
+        <h1>${title.title}</h1>
+        <p class="lead">${title.lead}</p>
+      </header>
+    `,
+    body: `
+      <section class="section grow">
+        <div class="option-grid cols-2 fill-grid">${informantButtons}</div>
+      </section>
+    `,
+    actions: `
+      <div class="actions">
+        <button type="button" class="secondary" data-action="start-informant-back">上一步</button>
+        <button type="button" class="primary" data-action="begin" ${
+          canBeginInterview(state) ? "" : "disabled"
+        }>
+          ${state.returnToSummary ? "回摘要" : "開始問診"}
+        </button>
+      </div>
+      ${returnSummaryBar()}
+    `,
+  });
+}
+
+/** Interview options: second language primary (top), Chinese secondary. */
 function bilingualButtonLabel(labels: BilingualText): string {
   const pair = bilingualPair(labels, secondLang());
-  return `<span class="zh">${pair.zh}</span><span class="sub">${pair.other}</span>`;
+  return `<span class="zh">${pair.other}</span><span class="sub">${pair.zh}</span>`;
 }
+
+function bilingualHeading(text: BilingualText): { title: string; lead: string } {
+  const pair = bilingualPair(text, secondLang());
+  return { title: pair.other, lead: pair.zh };
+}
+
+function bilingualSectionTitle(text: BilingualText): string {
+  const pair = bilingualPair(text, secondLang());
+  return `${pair.other} · ${pair.zh}`;
+}
+
+const LANG_FLAGS: Record<SecondLanguage, string> = {
+  en: "🇺🇸🇬🇧",
+  vi: "🇻🇳",
+  id: "🇮🇩",
+  fil: "🇵🇭",
+  th: "🇹🇭",
+  ja: "🇯🇵",
+  ko: "🇰🇷",
+  de: "🇩🇪",
+  fr: "🇫🇷",
+  es: "🇪🇸🇲🇽",
+};
 
 const INTERVIEW_STEPS: InterviewStep[] = [
   "start",
   "chief_complaint_1",
   "chief_complaint_2",
+  "chief_complaint_duration",
   "before",
   "intake",
   "past_history",
@@ -463,9 +557,9 @@ function renderChiefComplaint1(): void {
     getView().innerHTML = screenLayout({
       header: `
         <header class="step-header">
-          <p class="eyebrow">主訴 · 1／2</p>
-          <h1>${regionPair.zh} — 更精確位置</h1>
-          <p class="lead">${regionPair.other} — finer location (optional)</p>
+          <p class="eyebrow">主訴 · 1／3</p>
+          <h1>${regionPair.other} — finer location</h1>
+          <p class="lead">${regionPair.zh} — 更精確位置（選填）</p>
         </header>
       `,
       body: `<div class="option-grid cols-2 fill-grid">${subButtons}</div>`,
@@ -493,20 +587,7 @@ function renderChiefComplaint1(): void {
     `;
   }).join("");
 
-  const bodyMap = `
-    <div class="body-map" aria-label="身體圖">
-      <button type="button" class="body-hotspot head" data-action="cc1-body" data-id="head" aria-pressed="${detail.bodyRegionIds.includes("head")}">${bilingualButtonLabel(BODY_REGIONS.find((r) => r.id === "head")!.labels)}</button>
-      <button type="button" class="body-hotspot neck" data-action="cc1-body" data-id="neck" aria-pressed="${detail.bodyRegionIds.includes("neck")}">${bilingualButtonLabel(BODY_REGIONS.find((r) => r.id === "neck")!.labels)}</button>
-      <button type="button" class="body-hotspot left-arm" data-action="cc1-body" data-id="left_arm" aria-pressed="${detail.bodyRegionIds.includes("left_arm")}">${bilingualButtonLabel(BODY_REGIONS.find((r) => r.id === "left_arm")!.labels)}</button>
-      <button type="button" class="body-hotspot chest" data-action="cc1-body" data-id="chest" aria-pressed="${detail.bodyRegionIds.includes("chest")}">${bilingualButtonLabel(BODY_REGIONS.find((r) => r.id === "chest")!.labels)}</button>
-      <button type="button" class="body-hotspot right-arm" data-action="cc1-body" data-id="right_arm" aria-pressed="${detail.bodyRegionIds.includes("right_arm")}">${bilingualButtonLabel(BODY_REGIONS.find((r) => r.id === "right_arm")!.labels)}</button>
-      <button type="button" class="body-hotspot abdomen" data-action="cc1-body" data-id="abdomen" aria-pressed="${detail.bodyRegionIds.includes("abdomen")}">${bilingualButtonLabel(BODY_REGIONS.find((r) => r.id === "abdomen")!.labels)}</button>
-      <button type="button" class="body-hotspot back" data-action="cc1-body" data-id="back" aria-pressed="${detail.bodyRegionIds.includes("back")}">${bilingualButtonLabel(BODY_REGIONS.find((r) => r.id === "back")!.labels)}</button>
-      <button type="button" class="body-hotspot pelvis" data-action="cc1-body" data-id="pelvis" aria-pressed="${detail.bodyRegionIds.includes("pelvis")}">${bilingualButtonLabel(BODY_REGIONS.find((r) => r.id === "pelvis")!.labels)}</button>
-      <button type="button" class="body-hotspot left-leg" data-action="cc1-body" data-id="left_leg" aria-pressed="${detail.bodyRegionIds.includes("left_leg")}">${bilingualButtonLabel(BODY_REGIONS.find((r) => r.id === "left_leg")!.labels)}</button>
-      <button type="button" class="body-hotspot right-leg" data-action="cc1-body" data-id="right_leg" aria-pressed="${detail.bodyRegionIds.includes("right_leg")}">${bilingualButtonLabel(BODY_REGIONS.find((r) => r.id === "right_leg")!.labels)}</button>
-    </div>
-  `;
+  const bodyMap = renderBodyMap(detail.bodyRegionIds, "cc1-body");
 
   const status = state.answers.chief_complaint_1?.status;
   const statusNote =
@@ -516,27 +597,27 @@ function renderChiefComplaint1(): void {
         ? `<p class="status-note">已標示：跳過</p>`
         : "";
 
-  const title = bilingualPair(UI_COPY.cc1Title, secondLang());
-  const what = bilingualPair(UI_COPY.cc1What, secondLang());
-  const where = bilingualPair(UI_COPY.cc1Where, secondLang());
+  const title = bilingualHeading(UI_COPY.cc1Title);
+  const what = bilingualSectionTitle(UI_COPY.cc1What);
+  const where = bilingualSectionTitle(UI_COPY.cc1Where);
   const whereOpt = bilingualPair(UI_COPY.cc1WhereOptional, secondLang());
 
   getView().innerHTML = screenLayout({
     header: `
       <header class="step-header">
-        <p class="eyebrow">主訴 · 1／2</p>
-        <h1>${title.zh}</h1>
-        <p class="lead">${title.other}</p>
+        <p class="eyebrow">主訴 · 1／3</p>
+        <h1>${title.title}</h1>
+        <p class="lead">${title.lead}</p>
       </header>
     `,
     body: `
       <div class="split-panels">
         <section class="section grow">
-          <h2>${what.zh} · ${what.other}</h2>
+          <h2>${what}</h2>
           <div class="option-grid cols-2 fill-grid">${complaintButtons}</div>
         </section>
-        <section class="section grow ${showBody ? "" : "is-disabled"}">
-          <h2>${where.zh} · ${where.other}${showBody ? "" : ` ${whereOpt.zh}`}</h2>
+        <section class="section grow">
+          <h2>${where}${showBody ? "" : ` <span class="sub">${whereOpt.other} · ${whereOpt.zh}</span>`}</h2>
           ${bodyMap}
         </section>
       </div>
@@ -561,12 +642,8 @@ function renderChiefComplaint1(): void {
 function renderChiefComplaint2(): void {
   const detail = getChiefComplaint2Detail(state);
   const pain = showsPainScale(state);
-  const lang = secondLang();
 
-  // Pain: full quality list. Non-pain: non-pain-related (+ 疼痛 / 其他).
-  const qualityButtons = QUALITY_OPTIONS.filter((q) =>
-    pain ? true : !q.painRelated || q.id === "other_quality",
-  )
+  const qualityButtons = visibleQualityOptions(pain)
     .map((opt) => {
       const pressed = detail.qualityIds.includes(opt.id);
       return `
@@ -574,53 +651,6 @@ function renderChiefComplaint2(): void {
           type="button"
           class="option"
           data-action="cc2-quality"
-          data-id="${opt.id}"
-          aria-pressed="${pressed}"
-        >
-          ${bilingualButtonLabel(opt.labels)}
-        </button>
-      `;
-    })
-    .join("");
-
-  const justNow = TIME_BUCKETS.find((b) => b.id === "just_now");
-  const justNowButton = justNow
-    ? `
-      <button
-        type="button"
-        class="option"
-        data-action="cc2-time"
-        data-id="${justNow.id}"
-        aria-pressed="${detail.timeBucketId === justNow.id}"
-      >
-        ${bilingualButtonLabel(justNow.labels)}
-      </button>
-    `
-    : "";
-
-  const unitButtons = TIME_UNITS.map((unit) => {
-    const pressed = detail.timeUnit === unit.id;
-    return `
-      <button
-        type="button"
-        class="option unit-chip"
-        data-action="cc2-time-unit"
-        data-id="${unit.id}"
-        aria-pressed="${pressed}"
-      >
-        ${bilingualButtonLabel(unit.labels)}
-      </button>
-    `;
-  }).join("");
-
-  const periodButtons = TIME_BUCKETS.filter((b) => b.mode === "period")
-    .map((opt) => {
-      const pressed = detail.timeBucketId === opt.id;
-      return `
-        <button
-          type="button"
-          class="option"
-          data-action="cc2-time"
           data-id="${opt.id}"
           aria-pressed="${pressed}"
         >
@@ -655,93 +685,27 @@ function renderChiefComplaint2(): void {
         ? `<p class="status-note">已標示：跳過</p>`
         : "";
 
-  const title = bilingualPair(UI_COPY.cc2Title, lang);
-  const quality = bilingualPair(UI_COPY.cc2Quality, lang);
-  const duration = bilingualPair(UI_COPY.cc2Duration, lang);
-  const about = bilingualPair(UI_COPY.cc2DurationAbout, lang);
-  const previewLabel = bilingualPair(UI_COPY.cc2DurationPreview, lang);
-  const period = bilingualPair(UI_COPY.cc2Period, lang);
-  const painTitle = bilingualPair(UI_COPY.cc2Pain, lang);
-
-  const previewZh =
-    detail.timeAmount && detail.timeUnit
-      ? formatApproxDuration(detail.timeAmount, detail.timeUnit, "zh")
-      : "";
-  const previewOther =
-    detail.timeAmount && detail.timeUnit
-      ? formatApproxDuration(detail.timeAmount, detail.timeUnit, lang)
-      : formatDurationForLang(state, lang);
-  const previewBlock =
-    previewZh || previewOther
-      ? `<p class="duration-preview" aria-live="polite">
-          <span class="preview-label">${previewLabel.zh} · ${previewLabel.other}</span>
-          <span class="zh">${previewZh || "—"}</span>
-          <span class="sub">${previewOther || "—"}</span>
-        </p>`
-      : `<p class="duration-preview is-empty" aria-live="polite">
-          <span class="preview-label">${previewLabel.zh} · ${previewLabel.other}</span>
-          <span class="zh">約＿＿分鐘／小時／日</span>
-          <span class="sub">${about.other} ＿＿</span>
-        </p>`;
+  const title = bilingualHeading(UI_COPY.cc2Title);
+  const quality = bilingualSectionTitle(UI_COPY.cc2Quality);
+  const painTitle = bilingualSectionTitle(UI_COPY.cc2Pain);
 
   getView().innerHTML = screenLayout({
     header: `
       <header class="step-header">
-        <p class="eyebrow">主訴 · 2／2</p>
-        <h1>${title.zh}</h1>
-        <p class="lead">${title.other}</p>
+        <p class="eyebrow">主訴 · 2／3</p>
+        <h1>${title.title}</h1>
+        <p class="lead">${title.lead}</p>
       </header>
     `,
     body: `
       <section class="section">
-        <h2>${quality.zh} · ${quality.other}</h2>
+        <h2>${quality}</h2>
         <div class="option-grid cols-3">${qualityButtons}</div>
-      </section>
-      <section class="section">
-        <h2>${duration.zh} · ${duration.other}</h2>
-        <div class="duration-entry">
-          <span class="duration-prefix">
-            <span class="zh">${about.zh}</span>
-            <span class="sub">${about.other}</span>
-          </span>
-          <input
-            class="duration-amount"
-            type="number"
-            inputmode="numeric"
-            min="1"
-            max="9999"
-            step="1"
-            placeholder="＿＿"
-            data-action="cc2-time-amount"
-            value="${detail.timeAmount ?? ""}"
-          />
-          <div class="option-grid cols-3 unit-grid">${unitButtons}</div>
-        </div>
-        ${previewBlock}
-        ${
-          justNowButton
-            ? `<div class="option-grid cols-1 quick-time">${justNowButton}</div>`
-            : ""
-        }
-      </section>
-      <section class="section">
-        <h2>${period.zh} · ${period.other}</h2>
-        <div class="option-grid cols-2">${periodButtons}</div>
-      </section>
-      <section class="section emt-only compact">
-        <h2>EMT 細調時間（選填）</h2>
-        <input
-          class="refine-input"
-          type="text"
-          data-action="cc2-refine"
-          placeholder="例如：約 14:10 開始／發作已 25 分鐘"
-          value="${escapeAttr(detail.timeRefine)}"
-        />
       </section>
       ${
         pain
           ? `<section class="section compact">
-        <h2>${painTitle.zh} · ${painTitle.other}</h2>
+        <h2>${painTitle}</h2>
         <div class="pain-scale">${painButtons}</div>
       </section>`
           : ""
@@ -764,6 +728,160 @@ function renderChiefComplaint2(): void {
   });
 }
 
+function renderChiefComplaintDuration(): void {
+  const detail = getChiefComplaint2Detail(state);
+  const lang = secondLang();
+
+  const justNow = TIME_BUCKETS.find((b) => b.id === "just_now");
+  const justNowButton = justNow
+    ? `
+      <button
+        type="button"
+        class="option"
+        data-action="ccd-time"
+        data-id="${justNow.id}"
+        aria-pressed="${detail.timeBucketId === justNow.id}"
+      >
+        ${bilingualButtonLabel(justNow.labels)}
+      </button>
+    `
+    : "";
+
+  const unitButtons = TIME_UNITS.map((unit) => {
+    const pressed = detail.timeUnit === unit.id;
+    return `
+      <button
+        type="button"
+        class="option unit-chip"
+        data-action="ccd-time-unit"
+        data-id="${unit.id}"
+        aria-pressed="${pressed}"
+      >
+        ${bilingualButtonLabel(unit.labels)}
+      </button>
+    `;
+  }).join("");
+
+  const periodButtons = TIME_BUCKETS.filter((b) => b.mode === "period")
+    .map((opt) => {
+      const pressed = detail.timeBucketId === opt.id;
+      return `
+        <button
+          type="button"
+          class="option"
+          data-action="ccd-time"
+          data-id="${opt.id}"
+          aria-pressed="${pressed}"
+        >
+          ${bilingualButtonLabel(opt.labels)}
+        </button>
+      `;
+    })
+    .join("");
+
+  const status = state.answers.chief_complaint_duration?.status;
+  const statusNote =
+    status === "unknown"
+      ? `<p class="status-note">已標示：不知道</p>`
+      : status === "skipped"
+        ? `<p class="status-note">已標示：跳過</p>`
+        : "";
+
+  const title = bilingualHeading(UI_COPY.ccDurationTitle);
+  const duration = bilingualSectionTitle(UI_COPY.cc2Duration);
+  const about = bilingualPair(UI_COPY.cc2DurationAbout, lang);
+  const previewLabel = bilingualPair(UI_COPY.cc2DurationPreview, lang);
+  const period = bilingualSectionTitle(UI_COPY.cc2Period);
+
+  const previewZh =
+    detail.timeAmount && detail.timeUnit
+      ? formatApproxDuration(detail.timeAmount, detail.timeUnit, "zh")
+      : "";
+  const previewOther =
+    detail.timeAmount && detail.timeUnit
+      ? formatApproxDuration(detail.timeAmount, detail.timeUnit, lang)
+      : formatDurationForLang(state, lang);
+  const previewBlock =
+    previewZh || previewOther
+      ? `<p class="duration-preview" aria-live="polite">
+          <span class="preview-label">${previewLabel.other} · ${previewLabel.zh}</span>
+          <span class="zh">${previewOther || "—"}</span>
+          <span class="sub">${previewZh || "—"}</span>
+        </p>`
+      : `<p class="duration-preview is-empty" aria-live="polite">
+          <span class="preview-label">${previewLabel.other} · ${previewLabel.zh}</span>
+          <span class="zh">${about.other} ＿＿</span>
+          <span class="sub">約＿＿分鐘／小時／日</span>
+        </p>`;
+
+  getView().innerHTML = screenLayout({
+    header: `
+      <header class="step-header">
+        <p class="eyebrow">主訴 · 3／3</p>
+        <h1>${title.title}</h1>
+        <p class="lead">${title.lead}</p>
+      </header>
+    `,
+    body: `
+      <section class="section">
+        <h2>${duration}</h2>
+        <div class="duration-entry">
+          <span class="duration-prefix">
+            <span class="zh">${about.other}</span>
+            <span class="sub">${about.zh}</span>
+          </span>
+          <input
+            class="duration-amount"
+            type="number"
+            inputmode="numeric"
+            min="1"
+            max="9999"
+            step="1"
+            placeholder="＿＿"
+            data-action="ccd-time-amount"
+            value="${detail.timeAmount ?? ""}"
+          />
+          <div class="option-grid cols-3 unit-grid">${unitButtons}</div>
+        </div>
+        ${previewBlock}
+        ${
+          justNowButton
+            ? `<div class="option-grid cols-1 quick-time">${justNowButton}</div>`
+            : ""
+        }
+      </section>
+      <section class="section">
+        <h2>${period}</h2>
+        <div class="option-grid cols-2">${periodButtons}</div>
+      </section>
+      <section class="section emt-only compact">
+        <h2>EMT 細調時間（選填）</h2>
+        <input
+          class="refine-input"
+          type="text"
+          data-action="ccd-refine"
+          placeholder="例如：約 14:10 開始／發作已 25 分鐘"
+          value="${escapeAttr(detail.timeRefine)}"
+        />
+      </section>
+      ${statusNote}
+      ${ccDurationGateNote()}
+    `,
+    actions: `
+      <div class="actions">
+        <button type="button" class="secondary" data-action="ccd-back">上一步</button>
+        <button type="button" class="ghost" data-action="ccd-unknown">不知道</button>
+        <button type="button" class="ghost" data-action="ccd-unknown">無法回答</button>
+        <button type="button" class="ghost" data-action="ccd-skip">跳過</button>
+        <button type="button" class="primary" data-action="ccd-next" ${
+          canCompleteChiefComplaintDuration(state) ? "" : "disabled"
+        }>下一步</button>
+      </div>
+      ${returnSummaryBar()}
+    `,
+  });
+}
+
 function renderBodyMap(
   selectedRegions: string[],
   action: "cc1-body" | "sense-body",
@@ -772,18 +890,25 @@ function renderBodyMap(
     const labels = BODY_REGIONS.find((r) => r.id === id)!.labels;
     return `<button type="button" class="body-hotspot ${area}" data-action="${action}" data-id="${id}" aria-pressed="${selectedRegions.includes(id)}">${bilingualButtonLabel(labels)}</button>`;
   };
+  const list = BODY_REGIONS.map((region) => {
+    const pressed = selectedRegions.includes(region.id);
+    return `<button type="button" class="option" data-action="${action}" data-id="${region.id}" aria-pressed="${pressed}">${bilingualButtonLabel(region.labels)}</button>`;
+  }).join("");
   return `
-    <div class="body-map" aria-label="身體圖">
-      ${cell("head", "head")}
-      ${cell("neck", "neck")}
-      ${cell("left_arm", "left-arm")}
-      ${cell("chest", "chest")}
-      ${cell("right_arm", "right-arm")}
-      ${cell("abdomen", "abdomen")}
-      ${cell("back", "back")}
-      ${cell("pelvis", "pelvis")}
-      ${cell("left_leg", "left-leg")}
-      ${cell("right_leg", "right-leg")}
+    <div class="body-list" aria-label="身體部位清單">${list}</div>
+    <div class="body-map-wrap">
+      <div class="body-map" aria-label="身體圖">
+        ${cell("head", "head")}
+        ${cell("neck", "neck")}
+        ${cell("left_arm", "left-arm")}
+        ${cell("chest", "chest")}
+        ${cell("right_arm", "right-arm")}
+        ${cell("abdomen", "abdomen")}
+        ${cell("back", "back")}
+        ${cell("pelvis", "pelvis")}
+        ${cell("left_leg", "left-leg")}
+        ${cell("right_leg", "right-leg")}
+      </div>
     </div>
   `;
 }
@@ -813,8 +938,8 @@ function renderOtherSymptoms(): void {
       header: `
         <header class="step-header">
           <p class="eyebrow">感 · 二次掃描</p>
-          <h1>${regionPair.zh} — 更精確位置</h1>
-          <p class="lead">${regionPair.other}</p>
+          <h1>${regionPair.other}</h1>
+          <p class="lead">${regionPair.zh} — 更精確位置</p>
         </header>
       `,
       body: `<div class="option-grid cols-2 fill-grid">${subButtons}</div>`,
@@ -845,7 +970,7 @@ function renderOtherSymptoms(): void {
         ? `<p class="status-note">已標示：跳過</p>`
         : "";
 
-  const title = bilingualPair(UI_COPY.senseTitle, secondLang());
+  const title = bilingualHeading(UI_COPY.senseTitle);
   const lead = bilingualPair(UI_COPY.senseLead, secondLang());
   const symptoms = bilingualPair(UI_COPY.senseSymptoms, secondLang());
   const body = bilingualPair(UI_COPY.senseBody, secondLang());
@@ -854,18 +979,18 @@ function renderOtherSymptoms(): void {
     header: `
       <header class="step-header">
         <p class="eyebrow">感</p>
-        <h1>${title.zh}</h1>
-        <p class="lead">${title.other} · ${lead.other}</p>
+        <h1>${title.title}</h1>
+        <p class="lead">${title.lead} · ${lead.other}</p>
       </header>
     `,
     body: `
       <div class="split-panels">
         <section class="section grow">
-          <h2>${symptoms.zh} · ${symptoms.other}</h2>
+          <h2>${symptoms.other} · ${symptoms.zh}</h2>
           <div class="option-grid cols-2 fill-grid">${symptomButtons}</div>
         </section>
         <section class="section grow ${exclusive ? "is-disabled" : ""}">
-          <h2>${body.zh} · ${body.other}</h2>
+          <h2>${body.other} · ${body.zh}</h2>
           ${renderBodyMap(detail.bodyRegionIds, "sense-body")}
         </section>
       </div>
@@ -947,6 +1072,12 @@ app.addEventListener("click", (event) => {
     case "lang":
       if (id) state = setSecondLanguage(state, id as SecondLanguage);
       break;
+    case "start-lang-next":
+      if (state.secondLanguage) startPhase = "informant";
+      break;
+    case "start-informant-back":
+      startPhase = "language";
+      break;
     case "informant":
       if (id) state = setInformant(state, id as Informant);
       break;
@@ -978,15 +1109,12 @@ app.addEventListener("click", (event) => {
       break;
     case "cc1-back":
       state = goBackFromChiefComplaint1(state);
+      if (state.currentStep === "start" && state.secondLanguage) {
+        startPhase = "informant";
+      }
       break;
     case "cc2-quality":
       if (id) state = toggleQuality(state, id);
-      break;
-    case "cc2-time":
-      if (id) state = selectTimeBucket(state, id);
-      break;
-    case "cc2-time-unit":
-      if (id) state = setTimeUnit(state, id);
       break;
     case "cc2-pain":
       if (id) state = setPainScore(state, Number(id));
@@ -1002,6 +1130,24 @@ app.addEventListener("click", (event) => {
       break;
     case "cc2-back":
       state = goBackFromChiefComplaint2(state);
+      break;
+    case "ccd-time":
+      if (id) state = selectTimeBucket(state, id);
+      break;
+    case "ccd-time-unit":
+      if (id) state = setTimeUnit(state, id);
+      break;
+    case "ccd-unknown":
+      state = markChiefComplaintDurationUnknown(state);
+      break;
+    case "ccd-skip":
+      state = skipChiefComplaintDuration(state);
+      break;
+    case "ccd-next":
+      state = completeChiefComplaintDuration(state);
+      break;
+    case "ccd-back":
+      state = goBackFromChiefComplaintDuration(state);
       break;
     case "hist-option": {
       const step = target.dataset.step;
@@ -1068,13 +1214,17 @@ app.addEventListener("click", (event) => {
       state = goBackFromOtherSymptoms(state);
       break;
     case "summary-edit":
-      if (id && isInterviewStep(id)) state = editFromSummary(state, id);
+      if (id && isInterviewStep(id)) {
+        state = editFromSummary(state, id);
+        if (id === "start" && state.secondLanguage) startPhase = "informant";
+      }
       break;
     case "summary-return":
       state = returnToSummaryView(state);
       break;
     case "summary-finish":
       state = finishCase(state);
+      startPhase = "language";
       break;
     case "summary-copy": {
       const text = formatSummaryText(state);
@@ -1103,12 +1253,12 @@ app.addEventListener("click", (event) => {
   render();
 });
 
-function refreshCc2NextAndPreview(): void {
+function refreshDurationNextAndPreview(): void {
   const nextBtn = app!.querySelector<HTMLButtonElement>(
-    "button[data-action='cc2-next']",
+    "button[data-action='ccd-next']",
   );
   if (nextBtn) {
-    nextBtn.disabled = !canCompleteChiefComplaint2(state);
+    nextBtn.disabled = !canCompleteChiefComplaintDuration(state);
   }
   const detail = getChiefComplaint2Detail(state);
   const preview = app!.querySelector(".duration-preview");
@@ -1129,21 +1279,20 @@ function refreshCc2NextAndPreview(): void {
     );
     preview.classList.remove("is-empty");
     preview.innerHTML = `
-      <span class="preview-label">${previewLabel.zh} · ${previewLabel.other}</span>
-      <span class="zh">${zh}</span>
-      <span class="sub">${other}</span>
+      <span class="preview-label">${previewLabel.other} · ${previewLabel.zh}</span>
+      <span class="zh">${other}</span>
+      <span class="sub">${zh}</span>
     `;
   } else {
     preview.classList.add("is-empty");
     preview.innerHTML = `
-      <span class="preview-label">${previewLabel.zh} · ${previewLabel.other}</span>
-      <span class="zh">約＿＿分鐘／小時／日</span>
-      <span class="sub">${about.other} ＿＿</span>
+      <span class="preview-label">${previewLabel.other} · ${previewLabel.zh}</span>
+      <span class="zh">${about.other} ＿＿</span>
+      <span class="sub">約＿＿分鐘／小時／日</span>
     `;
   }
-  // Keep unit chip pressed state in sync without full re-render.
   for (const btn of app!.querySelectorAll<HTMLButtonElement>(
-    "button[data-action='cc2-time-unit']",
+    "button[data-action='ccd-time-unit']",
   )) {
     btn.setAttribute(
       "aria-pressed",
@@ -1151,7 +1300,7 @@ function refreshCc2NextAndPreview(): void {
     );
   }
   for (const btn of app!.querySelectorAll<HTMLButtonElement>(
-    "button[data-action='cc2-time']",
+    "button[data-action='ccd-time']",
   )) {
     btn.setAttribute(
       "aria-pressed",
@@ -1162,19 +1311,19 @@ function refreshCc2NextAndPreview(): void {
 
 app.addEventListener("input", (event) => {
   const target = event.target as HTMLInputElement;
-  if (target.matches("input[data-action='cc2-time-amount']")) {
+  if (target.matches("input[data-action='ccd-time-amount']")) {
     state = setTimeAmount(state, target.value);
-    refreshCc2NextAndPreview();
+    refreshDurationNextAndPreview();
     return;
   }
 
-  if (target.matches("input[data-action='cc2-refine']")) {
+  if (target.matches("input[data-action='ccd-refine']")) {
     state = setTimeRefine(state, target.value);
     const nextBtn = app!.querySelector<HTMLButtonElement>(
-      "button[data-action='cc2-next']",
+      "button[data-action='ccd-next']",
     );
     if (nextBtn) {
-      nextBtn.disabled = !canCompleteChiefComplaint2(state);
+      nextBtn.disabled = !canCompleteChiefComplaintDuration(state);
     }
     return;
   }

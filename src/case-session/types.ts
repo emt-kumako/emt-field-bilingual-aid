@@ -3,10 +3,13 @@ export type SecondLanguage =
   | "en"
   | "vi"
   | "id"
+  | "fil"
+  | "th"
   | "ja"
   | "ko"
-  | "fil"
-  | "th";
+  | "de"
+  | "fr"
+  | "es";
 
 export type Informant = "self" | "family" | "friend" | "other";
 
@@ -15,6 +18,7 @@ export type InterviewStep =
   | "start"
   | "chief_complaint_1"
   | "chief_complaint_2"
+  | "chief_complaint_duration"
   | "before"
   | "intake"
   | "past_history"
@@ -53,17 +57,9 @@ export function emptyChiefComplaint1Detail(): ChiefComplaint1Detail {
   };
 }
 
-/** 主訴 step 2 payload stored in answers.chief_complaint_2.detail */
+/** 主訴「怎麼不舒服」payload in answers.chief_complaint_2.detail */
 export type ChiefComplaint2Detail = {
   qualityIds: string[];
-  /** Patient-facing coarse time kind. */
-  timeMode: "duration" | "period" | null;
-  timeBucketId: string | null;
-  /** Numeric duration: 約 N 分鐘／小時／日 (clears bucket when set). */
-  timeAmount: number | null;
-  timeUnit: "minutes" | "hours" | "days" | null;
-  /** Optional EMT refine (does not block pointing flow). */
-  timeRefine: string;
   /** 1–10 when pain; otherwise null. */
   painScore: number | null;
 };
@@ -71,12 +67,37 @@ export type ChiefComplaint2Detail = {
 export function emptyChiefComplaint2Detail(): ChiefComplaint2Detail {
   return {
     qualityIds: [],
+    painScore: null,
+  };
+}
+
+/** 主訴「多久了」payload in answers.chief_complaint_duration.detail */
+export type ChiefComplaintDurationDetail = {
+  timeMode: "duration" | "period" | null;
+  timeBucketId: string | null;
+  timeAmount: number | null;
+  timeUnit: "minutes" | "hours" | "days" | null;
+  timeRefine: string;
+};
+
+export function emptyChiefComplaintDurationDetail(): ChiefComplaintDurationDetail {
+  return {
     timeMode: null,
     timeBucketId: null,
     timeAmount: null,
     timeUnit: null,
     timeRefine: "",
-    painScore: null,
+  };
+}
+
+/** Combined view for summary / UI that needs quality + duration together. */
+export type ChiefComplaintCombinedDetail = ChiefComplaint2Detail &
+  ChiefComplaintDurationDetail;
+
+export function emptyChiefComplaintCombinedDetail(): ChiefComplaintCombinedDetail {
+  return {
+    ...emptyChiefComplaint2Detail(),
+    ...emptyChiefComplaintDurationDetail(),
   };
 }
 

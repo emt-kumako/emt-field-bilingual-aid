@@ -13,6 +13,7 @@ import {
 } from "./chief-complaint-1.js";
 import {
   completeChiefComplaint2,
+  completeChiefComplaintDuration,
   selectTimeBucket,
   setPainScore,
   toggleQuality,
@@ -44,13 +45,14 @@ function finishedCase() {
   state = toggleBodyRegion(state, "chest");
   state = completeChiefComplaint1(state);
   state = toggleQuality(state, "crushing");
-  state = selectTimeBucket(state, "about_20_min");
   state = setPainScore(state, 8);
   state = completeChiefComplaint2(state);
+  state = selectTimeBucket(state, "about_20_min");
+  state = completeChiefComplaintDuration(state);
 
   state = toggleListOption(state, "before", "working");
   state = completeListStep(state, "before");
-  state = toggleListOption(state, "intake", "over_4h");
+  state = toggleListOption(state, "intake", "yesterday_dinner");
   state = completeListStep(state, "intake");
   state = markListStepUnknown(state, "past_history");
   state = completeListStep(state, "past_history");
@@ -75,6 +77,7 @@ describe("summary + clear", () => {
     expect(byKey.chief?.obtained).toBe(true);
     expect(byKey.chief?.value).toContain("疼痛");
     expect(byKey.chief?.value).toContain("痛尺：8/10");
+    expect(byKey.chief?.editStep).toBe("chief_complaint_2");
     expect(byKey.past_history?.obtained).toBe(false);
     expect(byKey.past_history?.value).toContain("不知道");
     expect(byKey.medications?.value).toContain("自備成藥");

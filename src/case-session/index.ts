@@ -23,12 +23,17 @@ export {
 } from "./chief-complaint-1.js";
 export {
   canCompleteChiefComplaint2,
+  canCompleteChiefComplaintDuration,
   clearPainScore,
   completeChiefComplaint2,
+  completeChiefComplaintDuration,
   formatDurationForLang,
   getChiefComplaint2Detail,
+  getChiefComplaintDurationDetail,
   goBackFromChiefComplaint2,
+  goBackFromChiefComplaintDuration,
   markChiefComplaint2Unknown,
+  markChiefComplaintDurationUnknown,
   selectTimeBucket,
   setPainScore,
   setTimeAmount,
@@ -36,6 +41,7 @@ export {
   setTimeUnit,
   showsPainScale,
   skipChiefComplaint2,
+  skipChiefComplaintDuration,
   toggleQuality,
 } from "./chief-complaint-2.js";
 export {
@@ -75,12 +81,16 @@ export {
 export {
   emptyChiefComplaint1Detail,
   emptyChiefComplaint2Detail,
+  emptyChiefComplaintCombinedDetail,
+  emptyChiefComplaintDurationDetail,
   emptyOtherSymptomsDetail,
   emptyStepAnswer,
   type AnswerStatus,
   type CaseState,
   type ChiefComplaint1Detail,
   type ChiefComplaint2Detail,
+  type ChiefComplaintCombinedDetail,
+  type ChiefComplaintDurationDetail,
   type Informant,
   type InterviewStep,
   type OtherSymptomsDetail,
