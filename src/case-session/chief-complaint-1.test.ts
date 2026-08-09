@@ -103,11 +103,11 @@ describe("trauma primary mechanism → body", () => {
     state = markChiefComplaint1Unknown(state);
     expect(canCompleteChiefComplaint1(state)).toBe(true);
     state = completeChiefComplaint1(state);
-    expect(state.currentStep).toBe("chief_complaint_quality");
+    expect(state.currentStep).toBe("chief_complaint_duration");
 
     state = beginTrauma();
     state = skipChiefComplaint1(state);
     state = completeChiefComplaint1(state);
-    expect(state.currentStep).toBe("chief_complaint_quality");
+    expect(state.currentStep).toBe("chief_complaint_duration");
   });
 });

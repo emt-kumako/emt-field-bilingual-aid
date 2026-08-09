@@ -335,15 +335,47 @@ export function canCompleteChiefComplaint1(state: CaseState): boolean {
 }
 
 /**
- * Finish step 1 (including skip/unknown) and move to quality,
- * or advance trauma mechanism → body stage.
+ * Minimal non-OPQRST set that still opens「怎麼不舒服」.
+ * Full trigger matrix is follow-up (ticket 07).
  */
+const NON_TRAUMA_QUALITY_TRIGGERS = new Set(["abdominal_pain", "pain"]);
+
+/**
+ * Whether the shared quality step should appear after primary.
+ * Unknown／skip primary and non-triggering non-trauma codes go straight to duration.
+ * Chest OPQRST never uses this step.
+ */
+export function needsQualityStep(state: CaseState): boolean {
+  const status = state.answers.chief_complaint_1?.status;
+  if (status !== "answered") return false;
+
+  if (usesTraumaPrimary(state)) return true;
+
+  const ids = readDetail(state).complaintTypeIds;
+  if (usesNonTraumaPrimary(state) && ids.includes("chest_pain")) {
+    return false;
+  }
+  return ids.some((id) => NON_TRAUMA_QUALITY_TRIGGERS.has(id));
+}
+
+function stepAfterPrimaryComplete(state: CaseState): CaseState["currentStep"] {
+  const detail = readDetail(state);
+  if (
+    usesNonTraumaPrimary(state) &&
+    detail.complaintTypeIds.includes("chest_pain")
+  ) {
+    return "chest_opqrst";
+  }
+  if (needsQualityStep(state)) return "chief_complaint_quality";
+  return "chief_complaint_duration";
+}
+
 export function completeChiefComplaint1(state: CaseState): CaseState {
   if (!canCompleteChiefComplaint1(state)) return state;
 
   const status = state.answers.chief_complaint_1?.status;
   if (status === "unknown" || status === "skipped") {
-    return { ...state, currentStep: "chief_complaint_quality" };
+    return { ...state, currentStep: "chief_complaint_duration" };
   }
 
   if (usesTraumaPrimary(state)) {
@@ -353,21 +385,15 @@ export function completeChiefComplaint1(state: CaseState): CaseState {
     }
     return {
       ...writeDetail(state, { ...detail, drilldownRegionId: null }),
-      currentStep: "chief_complaint_quality",
+      currentStep: stepAfterPrimaryComplete(state),
     };
   }
 
   const detail = { ...readDetail(state), drilldownRegionId: null };
   const written = writeDetail(state, detail);
-  if (
-    usesNonTraumaPrimary(state) &&
-    detail.complaintTypeIds.includes("chest_pain")
-  ) {
-    return { ...written, currentStep: "chest_opqrst" };
-  }
   return {
     ...written,
-    currentStep: "chief_complaint_quality",
+    currentStep: stepAfterPrimaryComplete(written),
   };
 }
 

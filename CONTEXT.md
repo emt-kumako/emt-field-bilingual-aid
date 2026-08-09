@@ -29,8 +29,8 @@ The module that owns Case state transitions and orchestration facts (including S
 _Avoid_: App controller, main logic, interview service
 
 **Chief complaint quality**:
-Interview step for how the discomfort feels (qualities) and pain score when relevant. Step id: `chief_complaint_quality`.
-_Avoid_: chief_complaint_2, CC2, combined chief complaint detail
+Interview step for how the discomfort feels (qualities) and pain score when relevant. Step id: `chief_complaint_quality`. Appears only when `needsQualityStep` is true (minimal set: trauma after body map; non-trauma `abdominal_pain`／legacy `pain`). Other non-OPQRST primaries skip to duration; chest OPQRST skips both quality and shared duration.
+_Avoid_: chief_complaint_2, CC2, combined chief complaint detail, showing quality for every primary
 
 **OPQRST chest page**:
 Non-trauma path after primary「胸悶／胸痛」: onset, provocation, quality, region/radiation, 0–10 severity, and time (pattern + approx duration or unknown). Step id: `chest_opqrst`. Writes chief complaint duration and skips the shared duration step (and quality).

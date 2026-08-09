@@ -263,7 +263,7 @@ describe("CaseSession apply / viewFacts", () => {
     expect(viewFacts(state).screen).toMatchObject({ primaryNote: "異味" });
 
     state = apply(state, { type: "nav", move: "next" });
-    expect(state.currentStep).toBe("chief_complaint_quality");
+    expect(state.currentStep).toBe("chief_complaint_duration");
   });
 
   it("keeps unknown and skip available when Next is soft-gated", () => {
@@ -285,12 +285,109 @@ describe("CaseSession apply / viewFacts", () => {
     let unknown = apply(state, { type: "nav", move: "unknown" });
     expect(unknown.answers.chief_complaint_1?.status).toBe("unknown");
     unknown = apply(unknown, { type: "nav", move: "next" });
-    expect(unknown.currentStep).toBe("chief_complaint_quality");
+    expect(unknown.currentStep).toBe("chief_complaint_duration");
 
     let skipped = apply(state, { type: "nav", move: "skip" });
     expect(skipped.answers.chief_complaint_1?.status).toBe("skipped");
     skipped = apply(skipped, { type: "nav", move: "next" });
-    expect(skipped.currentStep).toBe("chief_complaint_quality");
+    expect(skipped.currentStep).toBe("chief_complaint_duration");
+  });
+
+  it("routes quality conditionally and keeps shared duration off the OPQRST path", () => {
+    let trauma = createCase();
+    trauma = apply(trauma, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    trauma = apply(trauma, { type: "nav", move: "next" });
+    trauma = apply(trauma, { type: "edit", slot: "informant", value: "self" });
+    trauma = apply(trauma, {
+      type: "edit",
+      slot: "sceneType",
+      value: "trauma",
+    });
+    trauma = apply(trauma, { type: "nav", move: "next" });
+    trauma = apply(trauma, {
+      type: "edit",
+      slot: "traumaTraffic",
+      value: "traffic",
+    });
+    trauma = apply(trauma, {
+      type: "edit",
+      slot: "traumaVehicle",
+      value: "motorcycle",
+    });
+    trauma = apply(trauma, { type: "nav", move: "next" });
+    trauma = apply(trauma, {
+      type: "edit",
+      slot: "bodyRegion",
+      value: "chest",
+    });
+    trauma = apply(trauma, { type: "nav", move: "next" });
+    expect(trauma.currentStep).toBe("chief_complaint_quality");
+    trauma = apply(trauma, {
+      type: "edit",
+      slot: "quality",
+      value: "crushing",
+    });
+    trauma = apply(trauma, { type: "nav", move: "next" });
+    expect(trauma.currentStep).toBe("chief_complaint_duration");
+
+    let fever = createCase();
+    fever = apply(fever, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    fever = apply(fever, { type: "nav", move: "next" });
+    fever = apply(fever, { type: "edit", slot: "informant", value: "self" });
+    fever = apply(fever, {
+      type: "edit",
+      slot: "sceneType",
+      value: "non_trauma",
+    });
+    fever = apply(fever, { type: "nav", move: "next" });
+    fever = apply(fever, {
+      type: "edit",
+      slot: "complaintType",
+      value: "fever",
+    });
+    fever = apply(fever, { type: "nav", move: "next" });
+    expect(fever.currentStep).toBe("chief_complaint_duration");
+    fever = apply(fever, { type: "nav", move: "back" });
+    expect(fever.currentStep).toBe("chief_complaint_1");
+
+    let abdomen = createCase();
+    abdomen = apply(abdomen, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    abdomen = apply(abdomen, { type: "nav", move: "next" });
+    abdomen = apply(abdomen, {
+      type: "edit",
+      slot: "informant",
+      value: "self",
+    });
+    abdomen = apply(abdomen, {
+      type: "edit",
+      slot: "sceneType",
+      value: "non_trauma",
+    });
+    abdomen = apply(abdomen, { type: "nav", move: "next" });
+    abdomen = apply(abdomen, {
+      type: "edit",
+      slot: "complaintType",
+      value: "abdominal_pain",
+    });
+    abdomen = apply(abdomen, { type: "nav", move: "next" });
+    expect(abdomen.currentStep).toBe("chief_complaint_quality");
+    expect(viewFacts(abdomen).screen).toMatchObject({
+      step: "chief_complaint_quality",
+      showsPainScale: true,
+      needsQualityStep: true,
+    });
   });
 
   it("routes non-trauma chest_pain through OPQRST, writes duration, skips quality/duration", () => {

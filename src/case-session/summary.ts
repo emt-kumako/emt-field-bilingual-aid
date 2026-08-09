@@ -37,6 +37,7 @@ import {
 import {
   getChiefComplaint1Detail,
   getPrimaryNote,
+  needsQualityStep,
 } from "./chief-complaint-1.js";
 import {
   getChestOpqrstDetail,
@@ -135,12 +136,14 @@ function chiefComplaintEditStep(state: CaseState): InterviewStep {
     }
     return "chief_complaint_1";
   }
-  if (
-    incomplete(aQuality?.status) &&
-    aQuality?.status !== "unknown" &&
-    aQuality?.status !== "skipped"
-  ) {
-    return "chief_complaint_quality";
+  if (needsQualityStep(state)) {
+    if (
+      incomplete(aQuality?.status) &&
+      aQuality?.status !== "unknown" &&
+      aQuality?.status !== "skipped"
+    ) {
+      return "chief_complaint_quality";
+    }
   }
   if (
     incomplete(aDur?.status) &&
@@ -149,7 +152,9 @@ function chiefComplaintEditStep(state: CaseState): InterviewStep {
   ) {
     return "chief_complaint_duration";
   }
-  if (aQuality?.status === "answered") return "chief_complaint_quality";
+  if (needsQualityStep(state) && aQuality?.status === "answered") {
+    return "chief_complaint_quality";
+  }
   if (aDur?.status === "answered") return "chief_complaint_duration";
   return "chief_complaint_1";
 }

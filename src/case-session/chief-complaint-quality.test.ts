@@ -9,9 +9,11 @@ import {
 } from "./case-session.js";
 import {
   completeChiefComplaint1,
+  needsQualityStep,
   setTraumaTraffic,
   setTraumaVehicle,
   toggleBodyRegion,
+  toggleComplaintType,
 } from "./chief-complaint-1.js";
 import {
   canCompleteChiefComplaintDuration,
@@ -129,5 +131,30 @@ describe("chief complaint quality + duration", () => {
     expect(getChiefComplaintQualityDetail(state).qualityIds).toEqual([
       "same_as_complaint",
     ]);
+  });
+
+  it("skips quality for non-triggering non-trauma; abdominal_pain keeps quality + pain", () => {
+    let fever = beginInterview(
+      setSceneType(
+        setInformant(setSecondLanguage(createCase(), "en"), "self"),
+        "non_trauma",
+      ),
+    );
+    fever = toggleComplaintType(fever, "fever");
+    expect(needsQualityStep(fever)).toBe(false);
+    fever = completeChiefComplaint1(fever);
+    expect(fever.currentStep).toBe("chief_complaint_duration");
+
+    let abdomen = beginInterview(
+      setSceneType(
+        setInformant(setSecondLanguage(createCase(), "en"), "self"),
+        "non_trauma",
+      ),
+    );
+    abdomen = toggleComplaintType(abdomen, "abdominal_pain");
+    expect(needsQualityStep(abdomen)).toBe(true);
+    abdomen = completeChiefComplaint1(abdomen);
+    expect(abdomen.currentStep).toBe("chief_complaint_quality");
+    expect(showsPainScale(abdomen)).toBe(true);
   });
 });

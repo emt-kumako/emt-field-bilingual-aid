@@ -39,6 +39,7 @@ export {
   goBackFromChiefComplaint1,
   markChiefComplaint1Unknown,
   needsBodyLocation,
+  needsQualityStep,
   primaryOpensNote,
   setPrimaryNote,
   setTraumaFallHeightMeters,

@@ -15,6 +15,7 @@ import {
   goBackFromChiefComplaint1,
   markChiefComplaint1Unknown,
   needsBodyLocation,
+  needsQualityStep,
   primaryOpensNote,
   setPrimaryNote,
   setTraumaFallHeightMeters,
@@ -209,7 +210,8 @@ export type ScreenFacts =
       step: "chief_complaint_quality";
       qualityIds: string[];
       painScore: number | null;
-      showsPainScale: boolean;
+        showsPainScale: boolean;
+        needsQualityStep: boolean;
     }
   | {
       step: "chief_complaint_duration";
@@ -661,6 +663,7 @@ function screenFor(state: CaseState): ScreenFacts {
         qualityIds: d.qualityIds,
         painScore: d.painScore,
         showsPainScale: showsPainScale(state),
+        needsQualityStep: needsQualityStep(state),
       };
     }
     case "chief_complaint_duration": {

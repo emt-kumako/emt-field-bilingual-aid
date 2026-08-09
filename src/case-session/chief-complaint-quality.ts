@@ -48,9 +48,10 @@ export function getChiefComplaintQualityDetail(
   return readQuality(state);
 }
 
-/** Pain scale only when 主訴 step 1 includes pain. */
+/** Pain scale on quality step for pain-like primaries (minimal set). */
 export function showsPainScale(state: CaseState): boolean {
-  return getChiefComplaint1Detail(state).complaintTypeIds.includes("pain");
+  const ids = getChiefComplaint1Detail(state).complaintTypeIds;
+  return ids.includes("pain") || ids.includes("abdominal_pain");
 }
 
 export function toggleQuality(state: CaseState, qualityId: string): CaseState {

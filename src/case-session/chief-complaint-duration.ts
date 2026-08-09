@@ -3,6 +3,7 @@ import {
   getTimeBucket,
   getTimeUnit,
 } from "../catalog/chief-complaint-duration.js";
+import { needsQualityStep } from "./chief-complaint-1.js";
 import {
   type CaseState,
   type ChiefComplaintDurationDetail,
@@ -221,5 +222,8 @@ export function completeChiefComplaintDuration(state: CaseState): CaseState {
 }
 
 export function goBackFromChiefComplaintDuration(state: CaseState): CaseState {
-  return { ...state, currentStep: "chief_complaint_quality" };
+  if (needsQualityStep(state)) {
+    return { ...state, currentStep: "chief_complaint_quality" };
+  }
+  return { ...state, currentStep: "chief_complaint_1" };
 }
