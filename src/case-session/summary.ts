@@ -1,13 +1,22 @@
 import {
   BODY_REGIONS,
   COMPLAINT_TYPES,
-  getBodyRegion,
 } from "../catalog/chief-complaint-1.js";
 import { QUALITY_OPTIONS } from "../catalog/chief-complaint-quality.js";
 import {
   formatApproxDuration,
   getTimeBucket,
 } from "../catalog/chief-complaint-duration.js";
+import {
+  OPQRST_ONSET,
+  OPQRST_PROVOCATION,
+  OPQRST_QUALITY,
+  OPQRST_RADIATION_SITES,
+  OPQRST_RADIATION_TOGGLE_LABELS,
+  OPQRST_REGIONS,
+  OPQRST_TIME_PATTERN,
+  OPQRST_TIME_UNKNOWN_LABELS,
+} from "../catalog/chest-opqrst.js";
 import { getHistoryCatalog, type HistoryStepId } from "../catalog/history-block.js";
 import { type BilingualText } from "../catalog/labels.js";
 import { getNonTraumaPrimary } from "../catalog/non-trauma-primary.js";
@@ -21,8 +30,18 @@ import {
   getTraumaInjury,
 } from "../catalog/trauma-primary.js";
 import { UI_COPY } from "../catalog/ui-copy.js";
-import { INFORMANT_OPTIONS } from "../content/start-labels.js";
-import { getChiefComplaint1Detail } from "./chief-complaint-1.js";
+import {
+  INFORMANT_OPTIONS,
+  SCENE_TYPE_OPTIONS,
+} from "../content/start-labels.js";
+import {
+  getChiefComplaint1Detail,
+  getPrimaryNote,
+} from "./chief-complaint-1.js";
+import {
+  getChestOpqrstDetail,
+  isChestOpqrstPath,
+} from "./chest-opqrst.js";
 import { getChiefComplaintQualityDetail } from "./chief-complaint-quality.js";
 import { getChiefComplaintDurationDetail } from "./chief-complaint-duration.js";
 import { getOtherSymptomsDetail } from "./other-symptoms.js";
@@ -96,12 +115,24 @@ function informantName(id: Informant, lang: Lang): string {
 
 function chiefComplaintEditStep(state: CaseState): InterviewStep {
   const a1 = state.answers.chief_complaint_1;
+  const aOpqrst = state.answers.chest_opqrst;
   const aQuality = state.answers.chief_complaint_quality;
   const aDur = state.answers.chief_complaint_duration;
   const incomplete = (status: string | undefined) =>
     !status || status === "empty";
 
   if (incomplete(a1?.status) && a1?.status !== "unknown" && a1?.status !== "skipped") {
+    return "chief_complaint_1";
+  }
+  if (isChestOpqrstPath(state)) {
+    if (
+      aOpqrst?.status === "answered" ||
+      aOpqrst?.status === "unknown" ||
+      aOpqrst?.status === "skipped" ||
+      incomplete(aOpqrst?.status)
+    ) {
+      return "chest_opqrst";
+    }
     return "chief_complaint_1";
   }
   if (
@@ -123,6 +154,68 @@ function chiefComplaintEditStep(state: CaseState): InterviewStep {
   return "chief_complaint_1";
 }
 
+function lookupLabeled(
+  options: { id: string; labels: BilingualText }[],
+  id: string | null,
+  lang: Lang,
+): string | undefined {
+  if (!id) return undefined;
+  const opt = options.find((o) => o.id === id);
+  return opt ? pick(opt.labels, lang) : undefined;
+}
+
+function formatOpqrstParts(state: CaseState, lang: Lang): string[] {
+  const answer = state.answers.chest_opqrst;
+  if (!answer) return [];
+  if (answer.status === "unknown" || answer.status === "skipped") {
+    const st =
+      answer.status === "unknown"
+        ? pick(SUMMARY_COPY.notObtainedUnknown, lang)
+        : pick(SUMMARY_COPY.notObtainedSkipped, lang);
+    return [`OPQRST：${st}`];
+  }
+  if (answer.status !== "answered") return [];
+
+  const d = getChestOpqrstDetail(state);
+  const parts: string[] = [];
+  const onset = lookupLabeled(OPQRST_ONSET, d.onsetId, lang);
+  if (onset) parts.push(onset);
+  if (d.provocationIds.length) {
+    parts.push(
+      joinIds(d.provocationIds, lang, (id) =>
+        lookupLabeled(OPQRST_PROVOCATION, id, lang),
+      ),
+    );
+  }
+  const quality = lookupLabeled(OPQRST_QUALITY, d.qualityId, lang);
+  if (quality) parts.push(quality);
+  if (d.regionIds.length) {
+    parts.push(
+      `${pick(SUMMARY_COPY.body, lang)}：${joinIds(d.regionIds, lang, (id) =>
+        lookupLabeled(OPQRST_REGIONS, id, lang),
+      )}`,
+    );
+  }
+  if (d.radiation) {
+    const sites = d.radiationSiteIds.length
+      ? joinIds(d.radiationSiteIds, lang, (id) =>
+          lookupLabeled(OPQRST_RADIATION_SITES, id, lang),
+        )
+      : "";
+    parts.push(
+      sites
+        ? `${pick(OPQRST_RADIATION_TOGGLE_LABELS, lang)}：${sites}`
+        : pick(OPQRST_RADIATION_TOGGLE_LABELS, lang),
+    );
+  }
+  if (d.severity !== null) {
+    parts.push(`${pick(SUMMARY_COPY.pain, lang)}：${d.severity}/10`);
+  }
+  const pattern = lookupLabeled(OPQRST_TIME_PATTERN, d.timePattern, lang);
+  if (pattern) parts.push(pattern);
+  return parts;
+}
+
 function formatChiefParts(state: CaseState, lang: Lang): string[] {
   const aQuality = state.answers.chief_complaint_quality;
   const aDur = state.answers.chief_complaint_duration;
@@ -130,6 +223,12 @@ function formatChiefParts(state: CaseState, lang: Lang): string[] {
   const dq = getChiefComplaintQualityDetail(state);
   const dDur = getChiefComplaintDurationDetail(state);
   const parts: string[] = [];
+  const chestPath = isChestOpqrstPath(state);
+
+  if (state.sceneType) {
+    const scene = SCENE_TYPE_OPTIONS.find((o) => o.id === state.sceneType);
+    if (scene) parts.push(pick(scene.labels, lang));
+  }
 
   if (state.sceneType === "trauma") {
     if (d1.traumaOhca) {
@@ -165,18 +264,20 @@ function formatChiefParts(state: CaseState, lang: Lang): string[] {
     }
   } else if (d1.complaintTypeIds.length) {
     parts.push(
-      joinIds(
-        d1.complaintTypeIds,
-        lang,
-        (id) => {
-          const nonTrauma = getNonTraumaPrimary(id)?.labels;
-          if (nonTrauma) return pick(nonTrauma, lang);
-          const labels = COMPLAINT_TYPES.find((c) => c.id === id)?.labels;
-          return labels ? pick(labels, lang) : undefined;
-        },
-      ),
+      joinIds(d1.complaintTypeIds, lang, (id) => {
+        const nonTrauma = getNonTraumaPrimary(id)?.labels;
+        if (nonTrauma) return pick(nonTrauma, lang);
+        const labels = COMPLAINT_TYPES.find((c) => c.id === id)?.labels;
+        return labels ? pick(labels, lang) : undefined;
+      }),
     );
   }
+
+  const primaryNote = getPrimaryNote(state).trim();
+  if (primaryNote) {
+    parts.push(`${pick(SUMMARY_COPY.note, lang)}：${primaryNote}`);
+  }
+
   if (d1.bodyRegionIds.length) {
     const regions = joinIds(d1.bodyRegionIds, lang, (id) => {
       const labels = BODY_REGIONS.find((r) => r.id === id)?.labels;
@@ -193,24 +294,33 @@ function formatChiefParts(state: CaseState, lang: Lang): string[] {
       : "";
     parts.push(`${pick(SUMMARY_COPY.body, lang)}：${regions}${subs}`);
   }
-  if (dq.qualityIds.length) {
-    parts.push(
-      `${pick(SUMMARY_COPY.quality, lang)}：${joinIds(
-        dq.qualityIds,
-        lang,
-        (id) => {
-          const labels = QUALITY_OPTIONS.find((q) => q.id === id)?.labels;
-          return labels ? pick(labels, lang) : undefined;
-        },
-      )}`,
-    );
-  } else if (aQuality?.status === "unknown" || aQuality?.status === "skipped") {
-    const st =
-      aQuality.status === "unknown"
-        ? pick(SUMMARY_COPY.notObtainedUnknown, lang)
-        : pick(SUMMARY_COPY.notObtainedSkipped, lang);
-    parts.push(`${pick(SUMMARY_COPY.quality, lang)}：${st}`);
+
+  parts.push(...formatOpqrstParts(state, lang));
+
+  if (!chestPath) {
+    if (dq.qualityIds.length) {
+      parts.push(
+        `${pick(SUMMARY_COPY.quality, lang)}：${joinIds(
+          dq.qualityIds,
+          lang,
+          (id) => {
+            const labels = QUALITY_OPTIONS.find((q) => q.id === id)?.labels;
+            return labels ? pick(labels, lang) : undefined;
+          },
+        )}`,
+      );
+    } else if (aQuality?.status === "unknown" || aQuality?.status === "skipped") {
+      const st =
+        aQuality.status === "unknown"
+          ? pick(SUMMARY_COPY.notObtainedUnknown, lang)
+          : pick(SUMMARY_COPY.notObtainedSkipped, lang);
+      parts.push(`${pick(SUMMARY_COPY.quality, lang)}：${st}`);
+    }
+    if (dq.painScore !== null) {
+      parts.push(`${pick(SUMMARY_COPY.pain, lang)}：${dq.painScore}/10`);
+    }
   }
+
   {
     const durationText =
       dDur.timeAmount !== null &&
@@ -222,13 +332,18 @@ function formatChiefParts(state: CaseState, lang: Lang): string[] {
               const labels = getTimeBucket(dDur.timeBucketId)?.labels;
               return labels ? pick(labels, lang) : dDur.timeBucketId;
             })()
-          : "";
+          : dDur.timeUnknown
+            ? pick(OPQRST_TIME_UNKNOWN_LABELS, lang)
+            : "";
     if (durationText) {
       const refine = dDur.timeRefine.trim()
         ? `；${pick(SUMMARY_COPY.refine, lang)}：${dDur.timeRefine.trim()}`
         : "";
       parts.push(`${pick(SUMMARY_COPY.time, lang)}：${durationText}${refine}`);
-    } else if (aDur?.status === "unknown" || aDur?.status === "skipped") {
+    } else if (
+      !chestPath &&
+      (aDur?.status === "unknown" || aDur?.status === "skipped")
+    ) {
       const st =
         aDur.status === "unknown"
           ? pick(SUMMARY_COPY.notObtainedUnknown, lang)
@@ -240,9 +355,6 @@ function formatChiefParts(state: CaseState, lang: Lang): string[] {
       );
     }
   }
-  if (dq.painScore !== null) {
-    parts.push(`${pick(SUMMARY_COPY.pain, lang)}：${dq.painScore}/10`);
-  }
   return parts;
 }
 
@@ -252,12 +364,19 @@ function formatChiefComplaint(
 ): SummarySection {
   const editStep = chiefComplaintEditStep(state);
   const a1 = state.answers.chief_complaint_1;
+  const aOpqrst = state.answers.chest_opqrst;
   const aQuality = state.answers.chief_complaint_quality;
   const aDur = state.answers.chief_complaint_duration;
   const label = line(SUMMARY_COPY.chief, lang);
+  const chestPath = isChestOpqrstPath(state);
 
   if (
     (a1?.status === "unknown" || a1?.status === "skipped") &&
+    (!chestPath ||
+      aOpqrst?.status === "unknown" ||
+      aOpqrst?.status === "skipped" ||
+      !aOpqrst ||
+      aOpqrst.status === "empty") &&
     (aQuality?.status === "unknown" ||
       aQuality?.status === "skipped" ||
       !aQuality ||
@@ -279,9 +398,16 @@ function formatChiefComplaint(
 
   const zhParts = formatChiefParts(state, "zh");
   const otherParts = formatChiefParts(state, lang);
-  if (zhParts.length === 0) {
+  // Scene type alone is not a chief narrative.
+  const contentParts = zhParts.filter((p, i) => {
+    if (i !== 0 || !state.sceneType) return true;
+    const scene = SCENE_TYPE_OPTIONS.find((o) => o.id === state.sceneType);
+    return !scene || p !== scene.labels.zh;
+  });
+  if (contentParts.length === 0) {
     const blocked =
       statusLine(a1?.status, lang) ??
+      statusLine(aOpqrst?.status, lang) ??
       statusLine(aQuality?.status, lang) ??
       statusLine(aDur?.status, lang);
     return {
