@@ -34,13 +34,17 @@ export {
   clearBodyDrilldown,
   completeChiefComplaint1,
   getChiefComplaint1Detail,
+  getPrimaryNote,
   goBackFromChiefComplaint1,
   markChiefComplaint1Unknown,
   needsBodyLocation,
+  primaryOpensNote,
+  setPrimaryNote,
   skipChiefComplaint1,
   toggleBodyRegion,
   toggleBodySubregion,
   toggleComplaintType,
+  usesNonTraumaPrimary,
 } from "./chief-complaint-1.js";
 export {
   canCompleteChiefComplaintQuality,

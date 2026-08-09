@@ -23,7 +23,7 @@ function started() {
   return beginInterview(
     setSceneType(
       setInformant(setSecondLanguage(createCase(), "en"), "self"),
-      "non_trauma",
+      "trauma",
     ),
   );
 }

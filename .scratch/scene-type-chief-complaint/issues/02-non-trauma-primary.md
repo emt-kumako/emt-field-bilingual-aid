@@ -4,11 +4,18 @@
 
 **Blocked by:** 01 — Scene type 開場閘門
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 非創傷路徑主因步驟出扁平目錄（無大項分區標題）
-- [ ] OHCA 置頂；可只選 OHCA
-- [ ] 主因單選；未選時軟 Gate，Back／不知道／跳過仍可用
-- [ ] 含「其他」短註路徑
-- [ ] locale completeness 通過
-- [ ] CaseSession 測試覆蓋非創傷主因選取與閘門
+- [x] 非創傷路徑主因步驟出扁平目錄（無大項分區標題）
+- [x] OHCA 置頂；可只選 OHCA
+- [x] 主因單選；未選時軟 Gate，Back／不知道／跳過仍可用
+- [x] 含「其他」短註路徑
+- [x] locale completeness 通過
+- [x] CaseSession 測試覆蓋非創傷主因選取與閘門
+
+## Answer
+
+- Catalog `NON_TRAUMA_PRIMARY_REASONS` (OHCA first, flat, +其他 note).
+- `sceneType === non_trauma` → single-select via Option selection; no body map on this step.
+- Trauma path still uses legacy COMPLAINT_TYPES until ticket 03.
+- Vitest 48 passed; typecheck clean.

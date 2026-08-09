@@ -43,7 +43,7 @@ function finishedCase() {
   let state = beginInterview(
     setSceneType(
       setInformant(setSecondLanguage(createCase(), "en"), "family"),
-      "non_trauma",
+      "trauma",
     ),
   );
   state = setInformant(state, "self");

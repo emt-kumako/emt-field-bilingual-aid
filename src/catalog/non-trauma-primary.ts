@@ -1,0 +1,276 @@
+import { L, type BilingualText } from "./labels.js";
+
+export type NonTraumaPrimaryOption = {
+  id: string;
+  labels: BilingualText;
+  /** EMT-only short note when selected. */
+  opensNote?: boolean;
+};
+
+/** Flat PCR-aligned non-trauma primary reasons (no section headers). OHCA first. */
+export const NON_TRAUMA_PRIMARY_REASONS: NonTraumaPrimaryOption[] = [
+  {
+    id: "ohca",
+    labels: L("到院前心肺功能停止（OHCA）", {
+      en: "OHCA (out-of-hospital cardiac arrest)",
+      vi: "Ngừng tuần hoàn trước viện (OHCA)",
+      id: "Henti jantung pra-RS (OHCA)",
+      ja: "病院前心停止（OHCA）",
+      ko: "병원 전 심정지(OHCA)",
+      fil: "OHCA (cardiac arrest bago sa ospital)",
+      th: "หัวใจหยุดก่อนถึง รพ. (OHCA)",
+      de: "OHCA (prähospitaler Herzstillstand)",
+      fr: "OHCA (arrêt cardiaque préhospitalier)",
+      es: "OHCA (paro cardíaco prehospitalario)",
+    }),
+  },
+  {
+    id: "dyspnea",
+    labels: L("喘／呼吸急促", {
+      en: "Shortness of breath",
+      vi: "Khó thở / thở gấp",
+      id: "Sesak napas",
+      ja: "息切れ・呼吸が早い",
+      ko: "숨참/호흡곤란",
+      fil: "Hirap huminga",
+      th: "หายใจลำบาก/หอบ",
+      de: "Atemnot",
+      fr: "Essoufflement",
+      es: "Falta de aire",
+    }),
+  },
+  {
+    id: "airway_obstruction",
+    labels: L("異物哽塞", {
+      en: "Choking / airway obstruction",
+      vi: "Hóc dị vật",
+      id: "Tersedak / sumbatan jalan napas",
+      ja: "異物による気道閉塞",
+      ko: "이물 기도폐쇄",
+      fil: "Nabubulunan / sagabal sa hangin",
+      th: "สำลัก/ทางเดินหายใจอุดตัน",
+      de: "Fremdkörperaspiration",
+      fr: "Obstruction des voies aériennes",
+      es: "Atragantamiento / obstrucción",
+    }),
+  },
+  {
+    id: "unconscious",
+    labels: L("意識不清", {
+      en: "Unresponsive / altered consciousness",
+      vi: "Không tỉnh táo",
+      id: "Tidak sadar",
+      ja: "意識がない・はっきりしない",
+      ko: "의식 저하",
+      fil: "Walang malay / hindi gising",
+      th: "ไม่รู้สึกตัว",
+      de: "Bewusstseinsstörung",
+      fr: "Altération de la conscience",
+      es: "Alteración de conciencia",
+    }),
+  },
+  {
+    id: "chest_pain",
+    labels: L("胸痛／胸悶", {
+      en: "Chest pain / tightness",
+      vi: "Đau ngực / tức ngực",
+      id: "Nyeri / sesak dada",
+      ja: "胸痛・胸の圧迫感",
+      ko: "흉통/가슴 답답",
+      fil: "Sakit / paninikip ng dibdib",
+      th: "เจ็บ/แน่นหน้าอก",
+      de: "Brustschmerz / Enge",
+      fr: "Douleur / oppression thoracique",
+      es: "Dolor / opresión torácica",
+    }),
+  },
+  {
+    id: "abdominal_pain",
+    labels: L("腹痛", {
+      en: "Abdominal pain",
+      vi: "Đau bụng",
+      id: "Nyeri perut",
+      ja: "腹痛",
+      ko: "복통",
+      fil: "Sakit ng tiyan",
+      th: "ปวดท้อง",
+      de: "Bauchschmerz",
+      fr: "Douleur abdominale",
+      es: "Dolor abdominal",
+    }),
+  },
+  {
+    id: "dizziness_syncope",
+    labels: L("頭暈／頭痛／昏倒／昏厥", {
+      en: "Dizziness / headache / syncope",
+      vi: "Chóng mặt / đau đầu / ngất",
+      id: "Pusing / sakit kepala / pingsan",
+      ja: "めまい・頭痛・失神",
+      ko: "어지럼/두통/실신",
+      fil: "Hilo / sakit ng ulo / himatay",
+      th: "เวียนหัว/ปวดหัว/เป็นลม",
+      de: "Schwindel / Kopfschmerz / Synkope",
+      fr: "Vertige / céphalée / syncope",
+      es: "Mareo / cefalea / síncope",
+    }),
+  },
+  {
+    id: "fever",
+    labels: L("發燒", {
+      en: "Fever",
+      vi: "Sốt",
+      id: "Demam",
+      ja: "発熱",
+      ko: "발열",
+      fil: "Lagnat",
+      th: "ไข้",
+      de: "Fieber",
+      fr: "Fièvre",
+      es: "Fiebre",
+    }),
+  },
+  {
+    id: "gi_upset",
+    labels: L("噁心／嘔吐／腹瀉", {
+      en: "Nausea / vomiting / diarrhea",
+      vi: "Buồn nôn / nôn / tiêu chảy",
+      id: "Mual / muntah / diare",
+      ja: "吐き気・嘔吐・下痢",
+      ko: "메스꺼움/구토/설사",
+      fil: "Nasusuka / pagsusuka / pagtatae",
+      th: "คลื่นไส้/อาเจียน/ท้องเสีย",
+      de: "Übelkeit / Erbrechen / Durchfall",
+      fr: "Nausées / vomissements / diarrhée",
+      es: "Náuseas / vómitos / diarrea",
+    }),
+  },
+  {
+    id: "limb_weakness",
+    labels: L("肢體無力", {
+      en: "Limb weakness",
+      vi: "Yếu tay chân",
+      id: "Lemah anggota gerak",
+      ja: "手足の力が入らない",
+      ko: "사지 무력",
+      fil: "Mahina ang paa/kamay",
+      th: "แขนขาอ่อนแรง",
+      de: "Extremitätenschwäche",
+      fr: "Faiblesse d'un membre",
+      es: "Debilidad de extremidad",
+    }),
+  },
+  {
+    id: "poisoning",
+    labels: L("毒藥物中毒", {
+      en: "Suspected poisoning",
+      vi: "Ngộ độc",
+      id: "Keracunan",
+      ja: "薬物・毒物中毒の疑い",
+      ko: "중독 의심",
+      fil: "Posibleng pagkalason",
+      th: "สงสัยพิษ/ยาเกิน",
+      de: "Vergiftungsverdacht",
+      fr: "Suspicion d'intoxication",
+      es: "Sospecha de intoxicación",
+    }),
+  },
+  {
+    id: "co_poisoning",
+    labels: L("一氧化碳中毒", {
+      en: "Carbon monoxide poisoning",
+      vi: "Ngộ độc CO",
+      id: "Keracunan karbon monoksida",
+      ja: "一酸化炭素中毒",
+      ko: "일산화탄소 중독",
+      fil: "Pagkalason sa carbon monoxide",
+      th: "พิษคาร์บอนมอนอกไซด์",
+      de: "Kohlenmonoxidvergiftung",
+      fr: "Intoxication au monoxyde de carbone",
+      es: "Intoxicación por monóxido de carbono",
+    }),
+  },
+  {
+    id: "seizure",
+    labels: L("癲癇／抽搐", {
+      en: "Seizure / convulsions",
+      vi: "Động kinh / co giật",
+      id: "Kejang / epilepsi",
+      ja: "てんかん・けいれん",
+      ko: "경련/발작",
+      fil: "Kombulsyon / seizure",
+      th: "ชัก/ลมชัก",
+      de: "Krampfanfall",
+      fr: "Crise convulsive",
+      es: "Convulsión / epilepsia",
+    }),
+  },
+  {
+    id: "found_down",
+    labels: L("路倒", {
+      en: "Found down / collapsed in public",
+      vi: "Ngã đường / bất tỉnh nơi công cộng",
+      id: "Terbaring di jalan",
+      ja: "路上で倒れている",
+      ko: "길에서 쓰러짐",
+      fil: "Natagpuang nakabulagta",
+      th: "ล้มหมดสติกลางทาง",
+      de: "Hilflos aufgefunden",
+      fr: "Découvert inconscient",
+      es: "Encontrado inconsciente",
+    }),
+  },
+  {
+    id: "psych_emergency",
+    labels: L("行為急症／精神異常", {
+      en: "Behavioral / psychiatric emergency",
+      vi: "Cấp cứu tâm thần / hành vi",
+      id: "Kedaruratan perilaku / psikiatri",
+      ja: "行動・精神の急変",
+      ko: "행동/정신 응급",
+      fil: "Emergency sa gawi / isip",
+      th: "ฉุกเฉินด้านพฤติกรรม/จิต",
+      de: "Psychiatrischer Notfall",
+      fr: "Urgence psychiatrique / comportementale",
+      es: "Emergencia conductual / psiquiátrica",
+    }),
+  },
+  {
+    id: "obstetric_emergency",
+    labels: L("孕婦急產", {
+      en: "Obstetric emergency / imminent birth",
+      vi: "Sản khoa cấp / sắp sinh",
+      id: "Kedaruratan obstetri / akan lahir",
+      ja: "妊婦の急産",
+      ko: "임산부 응급/분만 임박",
+      fil: "Emergency sa pagbubuntis / manganganak",
+      th: "ฉุกเฉินสูติกรรม/ใกล้คลอด",
+      de: "Geburtshilflicher Notfall",
+      fr: "Urgence obstétricale",
+      es: "Emergencia obstétrica",
+    }),
+  },
+  {
+    id: "other",
+    opensNote: true,
+    labels: L("其他", {
+      en: "Other",
+      vi: "Khác",
+      id: "Lainnya",
+      ja: "その他",
+      ko: "기타",
+      fil: "Iba pa",
+      th: "อื่นๆ",
+      de: "Sonstiges",
+      fr: "Autre",
+      es: "Otro",
+    }),
+  },
+];
+
+export function getNonTraumaPrimary(id: string): NonTraumaPrimaryOption | undefined {
+  return NON_TRAUMA_PRIMARY_REASONS.find((o) => o.id === id);
+}
+
+export function nonTraumaPrimaryOpensNote(ids: readonly string[]): boolean {
+  return ids.some((id) => getNonTraumaPrimary(id)?.opensNote);
+}

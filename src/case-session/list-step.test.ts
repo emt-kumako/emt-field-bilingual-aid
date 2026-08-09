@@ -36,7 +36,7 @@ function atBefore() {
   let state = beginInterview(
     setSceneType(
       setInformant(setSecondLanguage(createCase(), "en"), "family"),
-      "non_trauma",
+      "trauma",
     ),
   );
   state = toggleComplaintType(state, "weakness");

@@ -22,7 +22,7 @@ function atOtherSymptoms(): CaseState {
     ...beginInterview(
       setSceneType(
         setInformant(setSecondLanguage(createCase(), "en"), "self"),
-        "non_trauma",
+        "trauma",
       ),
     ),
     currentStep: "other_symptoms",

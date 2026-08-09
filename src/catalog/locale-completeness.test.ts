@@ -15,6 +15,7 @@ import {
 import { ACCOMPANYING_SYMPTOMS } from "./other-symptoms.js";
 import { SUMMARY_COPY } from "./summary-copy.js";
 import { UI_COPY } from "./ui-copy.js";
+import { NON_TRAUMA_PRIMARY_REASONS } from "./non-trauma-primary.js";
 import {
   INFORMANT_OPTIONS,
   SCENE_TYPE_OPTIONS,
@@ -68,6 +69,9 @@ describe("locale packs", () => {
     }
     for (const opt of SCENE_TYPE_OPTIONS) {
       assertComplete(opt.labels, `sceneType:${opt.id}`);
+    }
+    for (const opt of NON_TRAUMA_PRIMARY_REASONS) {
+      assertComplete(opt.labels, `nonTraumaPrimary:${opt.id}`);
     }
   });
 

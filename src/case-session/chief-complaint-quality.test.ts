@@ -38,7 +38,7 @@ function atQuality(complaintIds: string[], bodyRegion?: string) {
   let state = beginInterview(
     setSceneType(
       setInformant(setSecondLanguage(createCase(), "en"), "self"),
-      "non_trauma",
+      "trauma",
     ),
   );
   for (const id of complaintIds) {

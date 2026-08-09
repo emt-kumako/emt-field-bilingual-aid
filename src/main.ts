@@ -3,6 +3,7 @@ import {
   COMPLAINT_TYPES,
   getBodyRegion,
 } from "./catalog/chief-complaint-1.js";
+import { NON_TRAUMA_PRIMARY_REASONS } from "./catalog/non-trauma-primary.js";
 import { visibleQualityOptions } from "./catalog/chief-complaint-quality.js";
 import {
   TIME_BUCKETS,
@@ -28,9 +29,12 @@ import {
   getListNote,
   getListOptionIds,
   getOtherSymptomsDetail,
+  getPrimaryNote,
   listStepNeedsNote,
   needsBodyLocation,
+  primaryOpensNote,
   showsPainScale,
+  usesNonTraumaPrimary,
   viewFacts,
   type CaseState,
   type GateReason,
@@ -169,6 +173,8 @@ function toIntent(
       return { type: "nav", move: "skip" };
     case "cc1-complaint":
       return id ? { type: "edit", slot: "complaintType", value: id } : null;
+    case "cc1-note":
+      return { type: "edit", slot: "primaryNote", value: inputValue ?? "" };
     case "cc1-body":
       return id ? { type: "edit", slot: "bodyRegion", value: id } : null;
     case "cc1-sub":
@@ -587,12 +593,13 @@ function isInterviewStep(step: string): step is InterviewStep {
 
 function renderChiefComplaint1(): void {
   const detail = getChiefComplaint1Detail(state);
+  const nonTrauma = usesNonTraumaPrimary(state);
   const showBody = needsBodyLocation(state);
   const drillRegion = detail.drilldownRegionId
     ? getBodyRegion(detail.drilldownRegionId)
     : undefined;
 
-  if (drillRegion && drillRegion.subregions.length > 0) {
+  if (!nonTrauma && drillRegion && drillRegion.subregions.length > 0) {
     paintBodyDrilldown({
       eyebrow: "主訴 · 1／3",
       titleSuffix: " — finer location",
@@ -605,7 +612,8 @@ function renderChiefComplaint1(): void {
     return;
   }
 
-  const complaintButtons = COMPLAINT_TYPES.map((opt) => {
+  const catalog = nonTrauma ? NON_TRAUMA_PRIMARY_REASONS : COMPLAINT_TYPES;
+  const complaintButtons = catalog.map((opt) => {
     const pressed = detail.complaintTypeIds.includes(opt.id);
     return `
       <button
@@ -620,7 +628,21 @@ function renderChiefComplaint1(): void {
     `;
   }).join("");
 
-  const bodyMap = renderBodyMap(detail.bodyRegionIds, "cc1-body");
+  const noteBlock =
+    nonTrauma && primaryOpensNote(state)
+      ? `
+      <section class="section emt-only compact">
+        <h2>EMT 備註「其他」（患者不用打字）</h2>
+        <label class="field">
+          <span class="field-label">短註</span>
+          <input
+            type="text"
+            data-action="cc1-note"
+            value="${escapeAttr(getPrimaryNote(state))}"
+          />
+        </label>
+      </section>`
+      : "";
 
   const status = state.answers.chief_complaint_1?.status;
   const statusNote =
@@ -639,6 +661,31 @@ function renderChiefComplaint1(): void {
     INTERVIEW_PRIMACY,
   );
 
+  const body = nonTrauma
+    ? `
+      <section class="section grow">
+        <h2>${what}</h2>
+        <div class="option-grid cols-2 fill-grid">${complaintButtons}</div>
+      </section>
+      ${noteBlock}
+      ${statusNote}
+      ${softGateNote()}
+    `
+    : `
+      <div class="split-panels">
+        <section class="section grow">
+          <h2>${what}</h2>
+          <div class="option-grid cols-2 fill-grid">${complaintButtons}</div>
+        </section>
+        <section class="section grow">
+          <h2>${where}${showBody ? "" : ` <span class="sub">${whereOpt.primary} · ${whereOpt.secondary}</span>`}</h2>
+          ${renderBodyMap(detail.bodyRegionIds, "cc1-body")}
+        </section>
+      </div>
+      ${statusNote}
+      ${softGateNote()}
+    `;
+
   getView().innerHTML = screenLayout({
     header: `
       <header class="step-header">
@@ -647,20 +694,7 @@ function renderChiefComplaint1(): void {
         <p class="lead">${title.lead}</p>
       </header>
     `,
-    body: `
-      <div class="split-panels">
-        <section class="section grow">
-          <h2>${what}</h2>
-          <div class="option-grid cols-2 fill-grid">${complaintButtons}</div>
-        </section>
-        <section class="section grow">
-          <h2>${where}${showBody ? "" : ` <span class="sub">${whereOpt.primary} · ${whereOpt.secondary}</span>`}</h2>
-          ${bodyMap}
-        </section>
-      </div>
-      ${statusNote}
-      ${softGateNote()}
-    `,
+    body,
     actions: `
       <div class="actions">
         <button type="button" class="secondary" data-action="cc1-back">上一步</button>

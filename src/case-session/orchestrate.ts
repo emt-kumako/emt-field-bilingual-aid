@@ -11,13 +11,17 @@ import {
   clearBodyDrilldown,
   completeChiefComplaint1,
   getChiefComplaint1Detail,
+  getPrimaryNote,
   goBackFromChiefComplaint1,
   markChiefComplaint1Unknown,
   needsBodyLocation,
+  primaryOpensNote,
   skipChiefComplaint1,
   toggleBodyRegion,
   toggleBodySubregion,
+  setPrimaryNote,
   toggleComplaintType,
+  usesNonTraumaPrimary,
 } from "./chief-complaint-1.js";
 import {
   canCompleteChiefComplaintQuality,
@@ -90,6 +94,7 @@ export type Slot =
   | "informant"
   | "sceneType"
   | "complaintType"
+  | "primaryNote"
   | "bodyRegion"
   | "bodySubregion"
   | "bodyDrilldown"
@@ -136,6 +141,9 @@ export type ScreenFacts =
       bodySubregionIds: string[];
       drilldownRegionId: string | null;
       needsBodyLocation: boolean;
+      usesNonTraumaPrimary: boolean;
+      primaryNote: string;
+      primaryOpensNote: boolean;
     }
   | {
       step: "chief_complaint_quality";
@@ -205,6 +213,8 @@ function applyEdit(state: CaseState, slot: Slot, value?: string): CaseState {
     case "complaintType":
       if (!value) return state;
       return toggleComplaintType(state, value);
+    case "primaryNote":
+      return setPrimaryNote(state, value ?? "");
     case "bodyRegion":
       if (!value) return state;
       return toggleBodyRegion(state, value);
@@ -475,6 +485,9 @@ function screenFor(state: CaseState): ScreenFacts {
         bodySubregionIds: d.bodySubregionIds,
         drilldownRegionId: d.drilldownRegionId,
         needsBodyLocation: needsBodyLocation(state),
+        usesNonTraumaPrimary: usesNonTraumaPrimary(state),
+        primaryNote: getPrimaryNote(state),
+        primaryOpensNote: primaryOpensNote(state),
       };
     }
     case "chief_complaint_quality": {
