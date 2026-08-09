@@ -13,6 +13,9 @@ export type SecondLanguage =
 
 export type Informant = "self" | "family" | "friend" | "other";
 
+/** PCR-aligned scene branch chosen on the informant Start page. */
+export type SceneType = "trauma" | "non_trauma";
+
 /** Two-page prelude before the chief-complaint interview. */
 export type StartPhase = "language" | "informant";
 
@@ -20,6 +23,7 @@ export type StartPhase = "language" | "informant";
 export type GateReason =
   | "need_second_language"
   | "need_informant"
+  | "need_scene_type"
   | "need_complaint_type"
   | "need_body_location"
   | "need_quality_or_pain"
@@ -121,12 +125,22 @@ export function emptyOtherSymptomsDetail(): OtherSymptomsDetail {
   };
 }
 
+/** Steps cleared when Scene type changes (primary／secondary path). */
+export const SCENE_TYPE_DEPENDENT_STEPS: InterviewStep[] = [
+  "chief_complaint_1",
+  "chief_complaint_quality",
+  "chief_complaint_duration",
+  "other_symptoms",
+];
+
 export type CaseState = {
   id: string;
   secondLanguage: SecondLanguage | null;
   informant: Informant | null;
   /** Informant history for mid-case changes (simple audit for summary). */
   informantHistory: Informant[];
+  /** 創傷／非創傷 branch; required with Informant before interview. */
+  sceneType: SceneType | null;
   /** Prelude page when currentStep === "start". */
   startPhase: StartPhase;
   currentStep: InterviewStep;

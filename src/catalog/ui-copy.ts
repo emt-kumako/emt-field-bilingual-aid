@@ -193,6 +193,18 @@ export const UI_COPY = {
     fr: "Qui répond aux questions ?",
     es: "¿Quién está respondiendo?",
   }),
+  sceneTypeAsking: L("現場是：", {
+    en: "Scene type:",
+    vi: "Hiện trường là:",
+    id: "Jenis kejadian:",
+    ja: "現場の区分：",
+    ko: "현장 유형:",
+    fil: "Uri ng eksena:",
+    th: "ลักษณะเหตุการณ์:",
+    de: "Einsatzart:",
+    fr: "Type de scène :",
+    es: "Tipo de escena:",
+  }),
   senseTitle: L("還有其他不舒服嗎？", {
     en: "Any other discomfort?",
     vi: "Còn khó chịu nào khác?",

@@ -3,6 +3,7 @@ import {
   beginInterview,
   createCase,
   setInformant,
+  setSceneType,
   setSecondLanguage,
 } from "./case-session.js";
 import {
@@ -19,7 +20,10 @@ import type { CaseState } from "./types.js";
 function atOtherSymptoms(): CaseState {
   return {
     ...beginInterview(
-      setInformant(setSecondLanguage(createCase(), "en"), "self"),
+      setSceneType(
+        setInformant(setSecondLanguage(createCase(), "en"), "self"),
+        "non_trauma",
+      ),
     ),
     currentStep: "other_symptoms",
   };

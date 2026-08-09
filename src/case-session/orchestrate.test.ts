@@ -25,8 +25,19 @@ describe("CaseSession apply / viewFacts", () => {
     expect(viewFacts(state).gate.reason).toBe("need_informant");
 
     state = apply(state, { type: "edit", slot: "informant", value: "self" });
+    expect(viewFacts(state).gate.reason).toBe("need_scene_type");
+    expect(viewFacts(state).gate.nextEnabled).toBe(false);
+
+    state = apply(state, { type: "edit", slot: "sceneType", value: "non_trauma" });
+    expect(viewFacts(state).screen).toMatchObject({
+      step: "start",
+      sceneType: "non_trauma",
+    });
+    expect(viewFacts(state).gate.nextEnabled).toBe(true);
+
     state = apply(state, { type: "nav", move: "next" });
     expect(state.currentStep).toBe("chief_complaint_1");
+    expect(state.sceneType).toBe("non_trauma");
   });
 
   it("soft-gates next but still allows back from informant to language", () => {
@@ -43,9 +54,62 @@ describe("CaseSession apply / viewFacts", () => {
     expect(blocked.currentStep).toBe("start");
     expect(blocked.startPhase).toBe("informant");
     expect(blocked.informant).toBeNull();
+    expect(blocked.sceneType).toBeNull();
 
     state = apply(state, { type: "nav", move: "back" });
     expect(state.startPhase).toBe("language");
+  });
+
+  it("clears chief-path answers when Scene type changes but keeps history", () => {
+    let state = createCase();
+    state = apply(state, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, { type: "edit", slot: "informant", value: "self" });
+    state = apply(state, { type: "edit", slot: "sceneType", value: "non_trauma" });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, {
+      type: "edit",
+      slot: "complaintType",
+      value: "pain",
+    });
+    state = apply(state, { type: "edit", slot: "bodyRegion", value: "chest" });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, { type: "edit", slot: "quality", value: "crushing" });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, { type: "edit", slot: "timeAmount", value: "10" });
+    state = apply(state, { type: "edit", slot: "timeUnit", value: "minutes" });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, { type: "edit", slot: "listOption", value: "sleeping" });
+    expect(state.answers.before?.optionIds).toContain("sleeping");
+    expect(state.answers.chief_complaint_1).toBeTruthy();
+
+    state = apply(state, { type: "nav", move: "edit", step: "start" });
+    state = apply(state, { type: "edit", slot: "sceneType", value: "trauma" });
+    expect(state.sceneType).toBe("trauma");
+    expect(state.answers.chief_complaint_1).toBeUndefined();
+    expect(state.answers.chief_complaint_quality).toBeUndefined();
+    expect(state.answers.chief_complaint_duration).toBeUndefined();
+    expect(state.answers.other_symptoms).toBeUndefined();
+    expect(state.answers.before?.optionIds).toContain("sleeping");
+  });
+
+  it("clears Scene type on finish", () => {
+    let state = createCase();
+    state = apply(state, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, { type: "edit", slot: "informant", value: "self" });
+    state = apply(state, { type: "edit", slot: "sceneType", value: "trauma" });
+    state = apply(state, { type: "nav", move: "finish" });
+    expect(state.sceneType).toBeNull();
+    expect(state.currentStep).toBe("start");
   });
 
   it("routes click and input through the same apply path", () => {
@@ -57,6 +121,7 @@ describe("CaseSession apply / viewFacts", () => {
     });
     state = apply(state, { type: "nav", move: "next" });
     state = apply(state, { type: "edit", slot: "informant", value: "family" });
+    state = apply(state, { type: "edit", slot: "sceneType", value: "non_trauma" });
     state = apply(state, { type: "nav", move: "next" });
     expect(state.currentStep).toBe("chief_complaint_1");
 
@@ -94,11 +159,13 @@ describe("CaseSession apply / viewFacts", () => {
     });
     state = apply(state, { type: "nav", move: "next" });
     state = apply(state, { type: "edit", slot: "informant", value: "self" });
+    state = apply(state, { type: "edit", slot: "sceneType", value: "non_trauma" });
     state = apply(state, { type: "nav", move: "next" });
     expect(state.currentStep).toBe("chief_complaint_1");
     state = apply(state, { type: "nav", move: "back" });
     expect(state.currentStep).toBe("start");
     expect(state.startPhase).toBe("informant");
+    expect(state.sceneType).toBe("non_trauma");
   });
 
   it("keeps unknown and skip available when Next is soft-gated", () => {
@@ -110,6 +177,7 @@ describe("CaseSession apply / viewFacts", () => {
     });
     state = apply(state, { type: "nav", move: "next" });
     state = apply(state, { type: "edit", slot: "informant", value: "self" });
+    state = apply(state, { type: "edit", slot: "sceneType", value: "non_trauma" });
     state = apply(state, { type: "nav", move: "next" });
     expect(viewFacts(state).gate.nextEnabled).toBe(false);
 

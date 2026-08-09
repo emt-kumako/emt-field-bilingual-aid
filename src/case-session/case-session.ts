@@ -1,7 +1,9 @@
 import {
+  SCENE_TYPE_DEPENDENT_STEPS,
   type CaseState,
   type Informant,
   type InterviewStep,
+  type SceneType,
   type SecondLanguage,
   emptyStepAnswer,
 } from "./types.js";
@@ -20,6 +22,7 @@ export function createCase(): CaseState {
     secondLanguage: null,
     informant: null,
     informantHistory: [],
+    sceneType: null,
     startPhase: "language",
     currentStep: "start",
     answers: {},
@@ -65,11 +68,42 @@ export function setInformant(state: CaseState, informant: Informant): CaseState 
   };
 }
 
-export function canBeginInterview(state: CaseState): boolean {
-  return state.secondLanguage !== null && state.informant !== null;
+/**
+ * Set or change Scene type. Changing clears primary／secondary-path answers;
+ * history mnemonic answers stay.
+ */
+export function setSceneType(state: CaseState, sceneType: SceneType): CaseState {
+  if (state.sceneType === sceneType) {
+    return state;
+  }
+
+  const answers = { ...state.answers };
+  for (const step of SCENE_TYPE_DEPENDENT_STEPS) {
+    delete answers[step];
+  }
+
+  let currentStep = state.currentStep;
+  if (SCENE_TYPE_DEPENDENT_STEPS.includes(currentStep)) {
+    currentStep = "chief_complaint_1";
+  }
+
+  return {
+    ...state,
+    sceneType,
+    answers,
+    currentStep,
+  };
 }
 
-/** Leave start and enter 主訴 step 1 when language + informant are set. */
+export function canBeginInterview(state: CaseState): boolean {
+  return (
+    state.secondLanguage !== null &&
+    state.informant !== null &&
+    state.sceneType !== null
+  );
+}
+
+/** Leave start and enter 主訴 step 1 when language + informant + Scene type are set. */
 export function beginInterview(state: CaseState): CaseState {
   if (!canBeginInterview(state)) {
     return state;

@@ -9,12 +9,16 @@ One interview episode for a single patient encounter, from language choice throu
 _Avoid_: Session (ambiguous with browser session), ticket
 
 **Start phase**:
-The two-page prelude before the chief-complaint interview: choose second language, then choose who is answering.
+The two-page prelude before the chief-complaint interview: choose second language, then on the informant page choose who is answering and Scene type.
 _Avoid_: Onboarding, wizard, splash
 
 **Informant**:
 Who is answering the interview questions (patient, family, friend, or other). Chinese label for friend is「朋友(友人)」.
 _Avoid_: Respondent, user, speaker, 有人 (as the friend option)
+
+**Scene type**:
+PCR-aligned branch on the informant Start page: trauma or non-trauma. Required with Informant before the interview; changing it clears primary／secondary-path answers and keeps history mnemonic answers.
+_Avoid_: Case type, call type, complaint class
 
 **Gate reason**:
 A stable code naming why the current step cannot advance yet; UI maps it to copy. Soft only: Next may stay disabled, Back / unknown / skip stay available.

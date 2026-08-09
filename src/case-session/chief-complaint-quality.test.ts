@@ -3,6 +3,7 @@ import {
   beginInterview,
   createCase,
   setInformant,
+  setSceneType,
   setSecondLanguage,
 } from "./case-session.js";
 import {
@@ -35,7 +36,10 @@ import {
 
 function atQuality(complaintIds: string[], bodyRegion?: string) {
   let state = beginInterview(
-    setInformant(setSecondLanguage(createCase(), "en"), "self"),
+    setSceneType(
+      setInformant(setSecondLanguage(createCase(), "en"), "self"),
+      "non_trauma",
+    ),
   );
   for (const id of complaintIds) {
     state = toggleComplaintType(state, id);

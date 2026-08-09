@@ -15,7 +15,10 @@ import {
 import { ACCOMPANYING_SYMPTOMS } from "./other-symptoms.js";
 import { SUMMARY_COPY } from "./summary-copy.js";
 import { UI_COPY } from "./ui-copy.js";
-import { INFORMANT_OPTIONS } from "../content/start-labels.js";
+import {
+  INFORMANT_OPTIONS,
+  SCENE_TYPE_OPTIONS,
+} from "../content/start-labels.js";
 
 function assertComplete(text: BilingualText, path: string): void {
   expect(text.zh.trim().length, `${path}.zh`).toBeGreaterThan(0);
@@ -62,6 +65,9 @@ describe("locale packs", () => {
     }
     for (const opt of INFORMANT_OPTIONS) {
       assertComplete(opt.labels, `informant:${opt.id}`);
+    }
+    for (const opt of SCENE_TYPE_OPTIONS) {
+      assertComplete(opt.labels, `sceneType:${opt.id}`);
     }
   });
 

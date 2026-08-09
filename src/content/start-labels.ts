@@ -1,5 +1,9 @@
 import { L, type BilingualText } from "../catalog/labels.js";
-import type { Informant, SecondLanguage } from "../case-session/types.js";
+import type {
+  Informant,
+  SceneType,
+  SecondLanguage,
+} from "../case-session/types.js";
 
 export const SECOND_LANGUAGE_OPTIONS: {
   id: SecondLanguage;
@@ -80,6 +84,42 @@ export const INFORMANT_OPTIONS: {
       de: "Sonstiges",
       fr: "Autre",
       es: "Otro",
+    }),
+  },
+];
+
+export const SCENE_TYPE_OPTIONS: {
+  id: SceneType;
+  labels: BilingualText;
+}[] = [
+  {
+    id: "non_trauma",
+    labels: L("非創傷", {
+      en: "Non-trauma",
+      vi: "Không chấn thương",
+      id: "Non-trauma",
+      ja: "非外傷",
+      ko: "비외상",
+      fil: "Hindi trauma",
+      th: "ไม่ใช่บาดเจ็บ",
+      de: "Nicht-Trauma",
+      fr: "Non traumatique",
+      es: "No traumático",
+    }),
+  },
+  {
+    id: "trauma",
+    labels: L("創傷", {
+      en: "Trauma",
+      vi: "Chấn thương",
+      id: "Trauma",
+      ja: "外傷",
+      ko: "외상",
+      fil: "Trauma",
+      th: "บาดเจ็บ",
+      de: "Trauma",
+      fr: "Traumatisme",
+      es: "Trauma",
     }),
   },
 ];

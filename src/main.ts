@@ -41,6 +41,7 @@ import {
 import { DISCLAIMER_ZH } from "./content/disclaimer.js";
 import {
   INFORMANT_OPTIONS,
+  SCENE_TYPE_OPTIONS,
   SECOND_LANGUAGE_OPTIONS,
 } from "./content/start-labels.js";
 import { SUMMARY_COPY } from "./catalog/summary-copy.js";
@@ -103,6 +104,7 @@ function secondLang(): SecondLanguage {
 const GATE_COPY: Record<GateReason, string> = {
   need_second_language: "請選擇語言",
   need_informant: "請選擇正在回答問題的是誰",
+  need_scene_type: "請選擇現場為創傷或非創傷",
   need_complaint_type: "請選擇主訴，或按「不知道／無法回答／跳過」",
   need_body_location: "此主訴需點選身體部位後才能下一步",
   need_quality_or_pain:
@@ -136,6 +138,8 @@ function toIntent(
       return id ? { type: "edit", slot: "secondLanguage", value: id } : null;
     case "informant":
       return id ? { type: "edit", slot: "informant", value: id } : null;
+    case "sceneType":
+      return id ? { type: "edit", slot: "sceneType", value: id } : null;
     case "start-lang-next":
     case "begin":
     case "cc1-next":
@@ -478,6 +482,7 @@ function renderStartLanguage(): void {
 
 function renderStartInformant(): void {
   const title = bilingualHeading(UI_COPY.informantAsking);
+  const sceneTitle = bilingualHeading(UI_COPY.sceneTypeAsking);
   const informantButtons = INFORMANT_OPTIONS.map((opt) => {
     const pressed = state.informant === opt.id;
     return `
@@ -485,6 +490,20 @@ function renderStartInformant(): void {
         type="button"
         class="option"
         data-action="informant"
+        data-id="${opt.id}"
+        aria-pressed="${pressed}"
+      >
+        ${bilingualButtonLabel(opt.labels)}
+      </button>
+    `;
+  }).join("");
+  const sceneButtons = SCENE_TYPE_OPTIONS.map((opt) => {
+    const pressed = state.sceneType === opt.id;
+    return `
+      <button
+        type="button"
+        class="option"
+        data-action="sceneType"
         data-id="${opt.id}"
         aria-pressed="${pressed}"
       >
@@ -502,8 +521,13 @@ function renderStartInformant(): void {
       </header>
     `,
     body: `
+      <section class="section">
+        <div class="option-grid cols-2">${informantButtons}</div>
+      </section>
       <section class="section grow">
-        <div class="option-grid cols-2 fill-grid">${informantButtons}</div>
+        <h2>${sceneTitle.title}</h2>
+        <p class="lead">${sceneTitle.lead}</p>
+        <div class="option-grid cols-2">${sceneButtons}</div>
       </section>
     `,
     actions: `

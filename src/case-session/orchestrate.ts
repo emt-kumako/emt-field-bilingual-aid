@@ -2,6 +2,7 @@ import { isHistoryStep, type HistoryStepId } from "../catalog/history-block.js";
 import {
   beginInterview,
   setInformant,
+  setSceneType,
   setSecondLanguage,
   startNewCase,
 } from "./case-session.js";
@@ -78,6 +79,7 @@ import type {
   GateReason,
   Informant,
   InterviewStep,
+  SceneType,
   SecondLanguage,
   StartPhase,
 } from "./types.js";
@@ -86,6 +88,7 @@ import type {
 export type Slot =
   | "secondLanguage"
   | "informant"
+  | "sceneType"
   | "complaintType"
   | "bodyRegion"
   | "bodySubregion"
@@ -123,6 +126,7 @@ export type ScreenFacts =
       startPhase: StartPhase;
       secondLanguage: SecondLanguage | null;
       informant: Informant | null;
+      sceneType: SceneType | null;
       returnToSummary: boolean;
     }
   | {
@@ -173,6 +177,7 @@ export type ViewFacts = {
   startPhase: StartPhase;
   secondLanguage: SecondLanguage | null;
   informant: Informant | null;
+  sceneType: SceneType | null;
   returnToSummary: boolean;
   gate: GateFacts;
   screen: ScreenFacts;
@@ -194,6 +199,9 @@ function applyEdit(state: CaseState, slot: Slot, value?: string): CaseState {
     case "informant":
       if (!value) return state;
       return setInformant(state, value as Informant);
+    case "sceneType":
+      if (!value) return state;
+      return setSceneType(state, value as SceneType);
     case "complaintType":
       if (!value) return state;
       return toggleComplaintType(state, value);
@@ -252,7 +260,7 @@ function applyNavNext(state: CaseState): CaseState {
         if (!state.secondLanguage) return state;
         return { ...state, startPhase: "informant" };
       }
-      if (!state.informant) return state;
+      if (!state.informant || !state.sceneType) return state;
       return state.returnToSummary
         ? returnToSummaryView(state)
         : beginInterview(state);
@@ -396,11 +404,13 @@ function gateFor(state: CaseState): GateFacts {
         };
       }
       {
-        const ok = state.informant !== null;
-        return {
-          reason: ok ? null : "need_informant",
-          nextEnabled: ok,
-        };
+        if (state.informant === null) {
+          return { reason: "need_informant", nextEnabled: false };
+        }
+        if (state.sceneType === null) {
+          return { reason: "need_scene_type", nextEnabled: false };
+        }
+        return { reason: null, nextEnabled: true };
       }
     case "chief_complaint_1": {
       if (canCompleteChiefComplaint1(state)) {
@@ -453,6 +463,7 @@ function screenFor(state: CaseState): ScreenFacts {
             : "language",
         secondLanguage: state.secondLanguage,
         informant: state.informant,
+        sceneType: state.sceneType,
         returnToSummary: state.returnToSummary,
       };
     case "chief_complaint_1": {
@@ -530,6 +541,7 @@ export function viewFacts(state: CaseState): ViewFacts {
     startPhase,
     secondLanguage: state.secondLanguage,
     informant: state.informant,
+    sceneType: state.sceneType,
     returnToSummary: state.returnToSummary,
     gate: gateFor(state),
     screen,

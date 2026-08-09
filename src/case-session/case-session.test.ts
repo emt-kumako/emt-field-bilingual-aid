@@ -5,6 +5,7 @@ import {
   createCase,
   getStepAnswer,
   setInformant,
+  setSceneType,
   setSecondLanguage,
   startNewCase,
   withAnswerForTesting,
@@ -20,6 +21,7 @@ describe("CaseSession", () => {
     expect(state.secondLanguage).toBeNull();
     expect(state.informant).toBeNull();
     expect(state.informantHistory).toEqual([]);
+    expect(state.sceneType).toBeNull();
     expect(state.answers).toEqual({});
     expect(getStepAnswer(state, "chief_complaint_1").status).toBe("empty");
   });
@@ -31,6 +33,7 @@ describe("CaseSession", () => {
         secondLanguage: "en",
         informant: "family",
         informantHistory: ["family"],
+        sceneType: "trauma",
         currentStep: "summary",
       },
       "medications",
@@ -49,6 +52,7 @@ describe("CaseSession", () => {
     expect(next.secondLanguage).toBeNull();
     expect(next.informant).toBeNull();
     expect(next.informantHistory).toEqual([]);
+    expect(next.sceneType).toBeNull();
     expect(next.answers).toEqual({});
     expect(next.returnToSummary).toBe(false);
     expect(getStepAnswer(next, "medications").status).toBe("empty");
@@ -85,7 +89,7 @@ describe("CaseSession", () => {
     expect(state.informantHistory).toEqual(["friend"]);
   });
 
-  it("beginInterview requires language and informant, then leaves start", () => {
+  it("beginInterview requires language, informant, and Scene type", () => {
     let state = createCase();
     expect(canBeginInterview(state)).toBe(false);
     expect(beginInterview(state).currentStep).toBe("start");
@@ -94,11 +98,28 @@ describe("CaseSession", () => {
     expect(canBeginInterview(state)).toBe(false);
 
     state = setInformant(state, "self");
+    expect(canBeginInterview(state)).toBe(false);
+
+    state = setSceneType(state, "non_trauma");
     expect(canBeginInterview(state)).toBe(true);
 
     state = beginInterview(state);
     expect(state.currentStep).toBe("chief_complaint_1");
     expect(state.secondLanguage).toBe("en");
     expect(state.informant).toBe("self");
+    expect(state.sceneType).toBe("non_trauma");
+  });
+
+  it("changing Scene type clears chief-path answers but keeps history", () => {
+    let state = setSceneType(
+      setInformant(setSecondLanguage(createCase(), "en"), "self"),
+      "non_trauma",
+    );
+    state = withAnswerForTesting(state, "chief_complaint_1", ["pain"]);
+    state = withAnswerForTesting(state, "before", ["sleeping"]);
+    state = setSceneType(state, "trauma");
+    expect(state.sceneType).toBe("trauma");
+    expect(getStepAnswer(state, "chief_complaint_1").status).toBe("empty");
+    expect(getStepAnswer(state, "before").optionIds).toEqual(["sleeping"]);
   });
 });

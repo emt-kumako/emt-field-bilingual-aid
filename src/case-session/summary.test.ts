@@ -3,6 +3,7 @@ import {
   beginInterview,
   createCase,
   setInformant,
+  setSceneType,
   setSecondLanguage,
   startNewCase,
 } from "./case-session.js";
@@ -40,7 +41,10 @@ import {
 
 function finishedCase() {
   let state = beginInterview(
-    setInformant(setSecondLanguage(createCase(), "en"), "family"),
+    setSceneType(
+      setInformant(setSecondLanguage(createCase(), "en"), "family"),
+      "non_trauma",
+    ),
   );
   state = setInformant(state, "self");
   state = toggleComplaintType(state, "pain");
