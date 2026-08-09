@@ -25,20 +25,24 @@ A stable code naming why the current step cannot advance yet; UI maps it to copy
 _Avoid_: Error, validation message, hard block
 
 **CaseSession**:
-The module that owns Case state transitions and orchestration facts (including Start phase and gate reasons). The DOM layer is an adapter across this seam.
+The module that owns Case state transitions and orchestration facts (including Start phase and gate reasons). The DOM layer is an adapter across this seam (`apply` / `viewFacts`; paint from `ScreenFacts`, not step getters or `state.answers`).
 _Avoid_: App controller, main logic, interview service
+
+**Chief complaint path**:
+Owns next / back / summary-edit routing and the soft gate from primary through entry into history (`before`). Includes quality / OPQRST / duration branching. History and secondary reason are outside this graph; trauma mechanism ↔ body stays inside the primary step.
+_Avoid_: Hard-coded cross-step strings in callers, putting history or secondary on this graph
 
 **Chief complaint quality**:
 Interview step for how the discomfort feels (qualities) and pain score when relevant. Step id: `chief_complaint_quality`. Appears only when `needsQualityStep` is true (minimal set: trauma after body map; non-trauma `abdominal_pain`／legacy `pain`). Other non-OPQRST primaries skip to duration; chest OPQRST skips both quality and shared duration.
 _Avoid_: chief_complaint_2, CC2, combined chief complaint detail, showing quality for every primary
 
 **OPQRST chest page**:
-Non-trauma path after primary「胸悶／胸痛」: onset, provocation, quality, region/radiation, 0–10 severity, and time (pattern + approx duration or unknown). Step id: `chest_opqrst`. Writes chief complaint duration and skips the shared duration step (and quality).
-_Avoid_: Full OPQRST for every complaint, free-text history
+Non-trauma path after primary「胸悶／胸痛」: onset, provocation, quality, region/radiation, 0–10 severity, and time (pattern + approx duration or unknown). Step id: `chest_opqrst`. Writes chief complaint duration (sole duration owner) and skips the shared duration step (and quality).
+_Avoid_: Full OPQRST for every complaint, free-text history, a separate OPQRST-owned timePattern field
 
 **Chief complaint duration**:
-Interview step for how long the problem has lasted (numeric duration, buckets, period, EMT refine). Step id: `chief_complaint_duration`. May be filled by the OPQRST chest page T fields instead of visiting this step.
-_Avoid_: Treating duration as part of “step 2”
+Interview step for how long the problem has lasted (numeric duration, buckets, period, pattern, EMT refine). Step id: `chief_complaint_duration`. Sole owner of duration/time-pattern detail; OPQRST T fields read/write this detail.
+_Avoid_: Treating duration as part of “step 2”, dual-writing timePattern on OPQRST detail
 
 **Primary reason**:
 First discomfort step after Start under Scene type:「哪裡不舒服」— non-trauma flat catalog or trauma mechanism → body map. Stored on `chief_complaint_1`.
@@ -55,6 +59,10 @@ _Avoid_: Toggle helper, checkbox logic
 **Body selection**:
 Shared ops for coarse body region, optional subregion drilldown, and clearing drilldown (`toggleRegion` / `toggleSubregion` / `clearDrilldown`). Steps persist into their own answer detail; policies like “exclusive symptom locks the body map” stay in the calling step.
 _Avoid_: Body map UI, hotspot layout
+
+**Chief narrative facts**:
+Ordered bilingual fragments CaseSession emits for the chief-complaint summary block (`editStep` + `obtained`). Summary joins/wraps; it does not re-derive path branching.
+_Avoid_: Rebuilding trauma/OPQRST/duration prose inside the summary formatter
 
 **Bilingual primacy**:
 Which language line is shown first in a bilingual pair (`second` | `chinese`). Interview and on-screen summary are second-language-primary (Chinese secondary) so the informant can reconfirm; clipboard copy of the summary is always Chinese for the record. Presentation module owns bilingual primacy ordering; CaseSession orchestration is `apply` / `viewFacts`.

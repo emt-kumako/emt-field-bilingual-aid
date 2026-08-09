@@ -17,6 +17,10 @@ import {
 } from "./chief-complaint-duration.js";
 import { getChiefComplaint1Detail } from "./chief-complaint-1.js";
 import {
+  backFromPathStep,
+  nextAfterOpqrst,
+} from "./chief-complaint-path.js";
+import {
   type CaseState,
   type ChestOpqrstDetail,
   type DurationTimePattern,
@@ -29,7 +33,6 @@ function readDetail(state: CaseState): ChestOpqrstDetail {
   if (!answer) return emptyChestOpqrstDetail();
   const d = answer.detail as Partial<ChestOpqrstDetail>;
   const base = emptyChestOpqrstDetail();
-  const pattern = d.timePattern;
   return {
     ...base,
     onsetId: d.onsetId ?? null,
@@ -45,8 +48,6 @@ function readDetail(state: CaseState): ChestOpqrstDetail {
       d.severity <= 10
         ? d.severity
         : null,
-    timePattern:
-      pattern === "intermittent" || pattern === "continuous" ? pattern : null,
   };
 }
 
@@ -58,8 +59,7 @@ function writeDetail(state: CaseState, detail: ChestOpqrstDetail): CaseState {
     detail.regionIds.length > 0 ||
     detail.radiation ||
     detail.radiationSiteIds.length > 0 ||
-    detail.severity !== null ||
-    detail.timePattern !== null;
+    detail.severity !== null;
 
   return {
     ...state,
@@ -74,7 +74,6 @@ function writeDetail(state: CaseState, detail: ChestOpqrstDetail): CaseState {
           ...(detail.qualityId ? [detail.qualityId] : []),
           ...detail.regionIds,
           ...(detail.severity !== null ? [`s${detail.severity}`] : []),
-          ...(detail.timePattern ? [detail.timePattern] : []),
         ],
         detail: { ...detail },
       },
@@ -172,11 +171,11 @@ export function setOpqrstTimePattern(
   pattern: DurationTimePattern,
 ): CaseState {
   if (!OPQRST_TIME_PATTERN.some((o) => o.id === pattern)) return state;
-  const detail = readDetail(state);
-  const next = detail.timePattern === pattern ? null : pattern;
-  let nextState = writeDetail(state, { ...detail, timePattern: next });
-  nextState = setTimePattern(nextState, next);
-  return nextState;
+  const current = getChiefComplaintDurationDetail(state).timePattern;
+  const next = current === pattern ? null : pattern;
+  // Mark OPQRST answered when T is touched so status stays coherent with O/Q/S.
+  let nextState = writeDetail(state, readDetail(state));
+  return setTimePattern(nextState, next);
 }
 
 export function setOpqrstTimeAmount(state: CaseState, raw: string): CaseState {
@@ -192,11 +191,9 @@ export function setOpqrstTimeUnit(state: CaseState, unitId: string): CaseState {
 }
 
 export function setOpqrstTimeUnknown(state: CaseState): CaseState {
-  const detail = readDetail(state);
-  if (!detail.timePattern) return state;
-  const alreadyUnknown =
-    getChiefComplaintDurationDetail(state).timeUnknown === true;
-  return setTimeUnknown(state, !alreadyUnknown);
+  const dur = getChiefComplaintDurationDetail(state);
+  if (!dur.timePattern) return state;
+  return setTimeUnknown(state, !dur.timeUnknown);
 }
 
 export function canCompleteChestOpqrst(state: CaseState): boolean {
@@ -241,9 +238,9 @@ export function skipChestOpqrst(state: CaseState): CaseState {
 /** Finish OPQRST → 之前 (skips quality + duration pages). */
 export function completeChestOpqrst(state: CaseState): CaseState {
   if (!canCompleteChestOpqrst(state)) return state;
-  return { ...state, currentStep: "before" };
+  return { ...state, currentStep: nextAfterOpqrst(state) };
 }
 
 export function goBackFromChestOpqrst(state: CaseState): CaseState {
-  return { ...state, currentStep: "chief_complaint_1" };
+  return { ...state, currentStep: backFromPathStep(state) };
 }

@@ -9,12 +9,12 @@ import {
 } from "./case-session.js";
 import {
   completeChiefComplaint1,
-  needsQualityStep,
   setTraumaTraffic,
   setTraumaVehicle,
   toggleBodyRegion,
   toggleComplaintType,
 } from "./chief-complaint-1.js";
+import { needsQualityStep } from "./chief-complaint-path.js";
 import {
   canCompleteChiefComplaintDuration,
   completeChiefComplaintDuration,

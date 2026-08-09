@@ -15,7 +15,6 @@ import {
   goBackFromChiefComplaint1,
   markChiefComplaint1Unknown,
   needsBodyLocation,
-  needsQualityStep,
   primaryOpensNote,
   setPrimaryNote,
   setTraumaFallHeightMeters,
@@ -59,7 +58,6 @@ import {
   completeChestOpqrst,
   getChestOpqrstDetail,
   goBackFromChestOpqrst,
-  isChestOpqrstPath,
   markChestOpqrstUnknown,
   setOpqrstOnset,
   setOpqrstQuality,
@@ -75,6 +73,12 @@ import {
   toggleOpqrstRegion,
 } from "./chest-opqrst.js";
 import { PAIN_SCALE_SOURCE_URL } from "../catalog/chest-opqrst.js";
+import {
+  backFromPathStep,
+  isChiefComplaintPathStep,
+  needsQualityStep,
+} from "./chief-complaint-path.js";
+import { gateForChiefComplaintPath } from "./chief-complaint-path-gate.js";
 import {
   canCompleteListStep,
   completeListStep,
@@ -190,6 +194,7 @@ export type ScreenFacts =
       traumaFallHeightMeters: number | null;
       traumaAsksFallHeight: boolean;
       traumaStage: "mechanism" | "body";
+      answerStatus: string;
     }
   | {
       step: "chest_opqrst";
@@ -205,13 +210,15 @@ export type ScreenFacts =
       timeUnit: "minutes" | "hours" | "days" | null;
       timeUnknown: boolean;
       painScaleSourceUrl: string;
+      answerStatus: string;
     }
   | {
       step: "chief_complaint_quality";
       qualityIds: string[];
       painScore: number | null;
-        showsPainScale: boolean;
-        needsQualityStep: boolean;
+      showsPainScale: boolean;
+      needsQualityStep: boolean;
+      answerStatus: string;
     }
   | {
       step: "chief_complaint_duration";
@@ -220,6 +227,9 @@ export type ScreenFacts =
       timeUnit: "minutes" | "hours" | "days" | null;
       timeRefine: string;
       timeMode: "duration" | "period" | null;
+      timePattern: "intermittent" | "continuous" | null;
+      timeUnknown: boolean;
+      answerStatus: string;
     }
   | {
       step: "before" | "intake" | "past_history" | "medications" | "allergies";
@@ -232,6 +242,7 @@ export type ScreenFacts =
       step: "other_symptoms";
       reasonIds: string[];
       secondaryCatalog: "trauma" | "non_trauma" | null;
+      answerStatus: string;
     }
   | {
       step: "summary";
@@ -411,15 +422,9 @@ function applyNavBack(state: CaseState): CaseState {
     case "chief_complaint_quality":
       return goBackFromChiefComplaintQuality(state);
     case "chief_complaint_duration":
-      if (isChestOpqrstPath(state)) {
-        return { ...state, currentStep: "chest_opqrst" };
-      }
       return goBackFromChiefComplaintDuration(state);
     case "before":
-      if (isChestOpqrstPath(state)) {
-        return { ...state, currentStep: "chest_opqrst" };
-      }
-      return goBackListStep(state, state.currentStep);
+      return { ...state, currentStep: backFromPathStep(state) };
     case "intake":
     case "past_history":
     case "medications":
@@ -539,49 +544,11 @@ function gateFor(state: CaseState): GateFacts {
         }
         return { reason: null, nextEnabled: true };
       }
-    case "chief_complaint_1": {
-      if (canCompleteChiefComplaint1(state)) {
-        return { reason: null, nextEnabled: true };
-      }
-      const detail = getChiefComplaint1Detail(state);
-      if (usesTraumaPrimary(state)) {
-        if (detail.traumaStage === "mechanism") {
-          if (!detail.traumaTraffic) {
-            return { reason: "need_trauma_mechanism", nextEnabled: false };
-          }
-          if (detail.traumaTraffic === "traffic" && !detail.traumaVehicleId) {
-            return { reason: "need_trauma_vehicle", nextEnabled: false };
-          }
-          if (
-            detail.traumaTraffic === "non_traffic" &&
-            !detail.traumaInjuryTypeId
-          ) {
-            return { reason: "need_trauma_mechanism", nextEnabled: false };
-          }
-          return { reason: "need_trauma_mechanism", nextEnabled: false };
-        }
-        return { reason: "need_body_location", nextEnabled: false };
-      }
-      if (detail.complaintTypeIds.length === 0) {
-        return { reason: "need_complaint_type", nextEnabled: false };
-      }
-      if (needsBodyLocation(state) && detail.bodyRegionIds.length === 0) {
-        return { reason: "need_body_location", nextEnabled: false };
-      }
-      return { reason: "need_complaint_type", nextEnabled: false };
-    }
+    case "chief_complaint_1":
     case "chest_opqrst":
-      return canCompleteChestOpqrst(state)
-        ? { reason: null, nextEnabled: true }
-        : { reason: "need_opqrst", nextEnabled: false };
     case "chief_complaint_quality":
-      return canCompleteChiefComplaintQuality(state)
-        ? { reason: null, nextEnabled: true }
-        : { reason: "need_quality_or_pain", nextEnabled: false };
     case "chief_complaint_duration":
-      return canCompleteChiefComplaintDuration(state)
-        ? { reason: null, nextEnabled: true }
-        : { reason: "need_duration", nextEnabled: false };
+      return gateForChiefComplaintPath(state);
     case "before":
     case "intake":
     case "past_history":
@@ -635,6 +602,7 @@ function screenFor(state: CaseState): ScreenFacts {
         traumaFallHeightMeters: d.traumaFallHeightMeters,
         traumaAsksFallHeight: traumaAsksFallHeight(state),
         traumaStage: d.traumaStage,
+        answerStatus: state.answers.chief_complaint_1?.status ?? "empty",
       };
     }
     case "chest_opqrst": {
@@ -649,11 +617,12 @@ function screenFor(state: CaseState): ScreenFacts {
         radiation: d.radiation,
         radiationSiteIds: d.radiationSiteIds,
         severity: d.severity,
-        timePattern: d.timePattern,
+        timePattern: dur.timePattern,
         timeAmount: dur.timeAmount,
         timeUnit: dur.timeUnit,
         timeUnknown: dur.timeUnknown,
         painScaleSourceUrl: PAIN_SCALE_SOURCE_URL,
+        answerStatus: state.answers.chest_opqrst?.status ?? "empty",
       };
     }
     case "chief_complaint_quality": {
@@ -664,6 +633,7 @@ function screenFor(state: CaseState): ScreenFacts {
         painScore: d.painScore,
         showsPainScale: showsPainScale(state),
         needsQualityStep: needsQualityStep(state),
+        answerStatus: state.answers.chief_complaint_quality?.status ?? "empty",
       };
     }
     case "chief_complaint_duration": {
@@ -675,6 +645,9 @@ function screenFor(state: CaseState): ScreenFacts {
         timeUnit: d.timeUnit,
         timeRefine: d.timeRefine,
         timeMode: d.timeMode,
+        timePattern: d.timePattern,
+        timeUnknown: d.timeUnknown,
+        answerStatus: state.answers.chief_complaint_duration?.status ?? "empty",
       };
     }
     case "before":
@@ -697,6 +670,7 @@ function screenFor(state: CaseState): ScreenFacts {
         step: "other_symptoms",
         reasonIds: d.reasonIds,
         secondaryCatalog: secondaryCatalogKind(state),
+        answerStatus: state.answers.other_symptoms?.status ?? "empty",
       };
     }
     case "summary":

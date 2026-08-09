@@ -137,7 +137,7 @@ export function emptyChiefComplaintDurationDetail(): ChiefComplaintDurationDetai
   };
 }
 
-/** Non-trauma chest pain／tightness OPQRST page. */
+/** Non-trauma chest pain／tightness OPQRST page (T lives on duration only). */
 export type ChestOpqrstDetail = {
   onsetId: string | null;
   provocationIds: string[];
@@ -147,7 +147,6 @@ export type ChestOpqrstDetail = {
   radiationSiteIds: string[];
   /** 0–10 inclusive. */
   severity: number | null;
-  timePattern: DurationTimePattern | null;
 };
 
 export function emptyChestOpqrstDetail(): ChestOpqrstDetail {
@@ -159,7 +158,6 @@ export function emptyChestOpqrstDetail(): ChestOpqrstDetail {
     radiation: false,
     radiationSiteIds: [],
     severity: null,
-    timePattern: null,
   };
 }
 

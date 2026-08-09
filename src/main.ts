@@ -40,20 +40,6 @@ import { UI_COPY } from "./catalog/ui-copy.js";
 import {
   apply,
   createCase,
-  formatDurationForLang,
-  getChiefComplaint1Detail,
-  getChiefComplaintQualityDetail,
-  getChiefComplaintDurationDetail,
-  getListNote,
-  getListOptionIds,
-  getPrimaryNote,
-  listStepNeedsNote,
-  needsBodyLocation,
-  primaryOpensNote,
-  showsPainScale,
-  traumaAsksFallHeight,
-  usesNonTraumaPrimary,
-  usesTraumaPrimary,
   viewFacts,
   type CaseState,
   type GateReason,
@@ -384,12 +370,28 @@ function renderHistoryNav(active: HistoryStepId): string {
   `;
 }
 
+function answerStatusNote(status: string): string {
+  if (status === "unknown") return `<p class="status-note">已標示：不知道</p>`;
+  if (status === "skipped") return `<p class="status-note">已標示：跳過</p>`;
+  return "";
+}
+
 function renderHistoryStep(step: HistoryStepId): void {
   const catalog = getHistoryCatalog(step);
   if (!catalog) return;
+  const screen = viewFacts(state).screen;
+  if (
+    screen.step !== "before" &&
+    screen.step !== "intake" &&
+    screen.step !== "past_history" &&
+    screen.step !== "medications" &&
+    screen.step !== "allergies"
+  ) {
+    return;
+  }
 
   const title = bilingualHeading(catalog.title);
-  const selected = new Set(getListOptionIds(state, step));
+  const selected = new Set(screen.optionIds);
   const index = HISTORY_STEP_ORDER.indexOf(step) + 1;
 
   const renderOption = (opt: (typeof catalog.options)[number]) => {
@@ -426,7 +428,7 @@ function renderHistoryStep(step: HistoryStepId): void {
     optionButtons = `<div class="option-grid cols-2 fill-grid">${catalog.options.map(renderOption).join("")}</div>`;
   }
 
-  const noteBlock = listStepNeedsNote(state, step)
+  const noteBlock = screen.noteRequired
     ? `
       <section class="section emt-only">
         <h2>EMT 備註「其他」（患者不用打字）</h2>
@@ -436,19 +438,13 @@ function renderHistoryStep(step: HistoryStepId): void {
           data-action="hist-note"
           data-step="${step}"
           placeholder="簡短註記"
-          value="${escapeAttr(getListNote(state, step))}"
+          value="${escapeAttr(screen.note)}"
         />
       </section>
     `
     : "";
 
-  const status = state.answers[step]?.status;
-  const statusNote =
-    status === "unknown"
-      ? `<p class="status-note">已標示：不知道</p>`
-      : status === "skipped"
-        ? `<p class="status-note">已標示：跳過</p>`
-        : "";
+  const statusNote = answerStatusNote(screen.answerStatus);
 
   getView().innerHTML = screenLayout({
     header: `
@@ -644,10 +640,9 @@ function isInterviewStep(step: string): step is InterviewStep {
 }
 
 function cc1StatusNote(): string {
-  const status = state.answers.chief_complaint_1?.status;
-  if (status === "unknown") return `<p class="status-note">已標示：不知道</p>`;
-  if (status === "skipped") return `<p class="status-note">已標示：跳過</p>`;
-  return "";
+  const screen = viewFacts(state).screen;
+  if (screen.step !== "chief_complaint_1") return "";
+  return answerStatusNote(screen.answerStatus);
 }
 
 function optionButtons(
@@ -780,20 +775,21 @@ function cc1ActionBar(): string {
 }
 
 function renderChiefComplaint1(): void {
-  const detail = getChiefComplaint1Detail(state);
+  const screen = viewFacts(state).screen;
+  if (screen.step !== "chief_complaint_1") return;
   const title = bilingualHeading(UI_COPY.cc1Title);
 
-  if (usesTraumaPrimary(state)) {
-    if (detail.traumaStage === "body") {
-      const drillRegion = detail.drilldownRegionId
-        ? getBodyRegion(detail.drilldownRegionId)
+  if (screen.usesTraumaPrimary) {
+    if (screen.traumaStage === "body") {
+      const drillRegion = screen.drilldownRegionId
+        ? getBodyRegion(screen.drilldownRegionId)
         : undefined;
       if (drillRegion && drillRegion.subregions.length > 0) {
         paintBodyDrilldown({
           eyebrow: "主訴 · 身體部位",
           titleSuffix: " — finer location",
           region: drillRegion,
-          selectedSubIds: detail.bodySubregionIds,
+          selectedSubIds: screen.bodySubregionIds,
           subAction: "cc1-sub",
           doneAction: "cc1-drill-done",
           leadZhSuffix: "更精確位置（選填）",
@@ -812,7 +808,7 @@ function renderChiefComplaint1(): void {
         body: `
           <section class="section grow">
             <h2>${bodyTitle}</h2>
-            ${renderBodyMap(detail.bodyRegionIds, "cc1-body")}
+            ${renderBodyMap(screen.bodyRegionIds, "cc1-body")}
           </section>
           ${cc1StatusNote()}
           ${softGateNote()}
@@ -823,21 +819,21 @@ function renderChiefComplaint1(): void {
     }
 
     const mechTitle = bilingualSectionTitle(UI_COPY.traumaMechanismTitle);
-    const ohcaPressed = detail.traumaOhca;
+    const ohcaPressed = screen.traumaOhca;
     const trafficButtons = TRAUMA_TRAFFIC_OPTIONS.map((opt) => {
-      const pressed = detail.traumaTraffic === opt.id;
+      const pressed = screen.traumaTraffic === opt.id;
       return `
         <button type="button" class="option" data-action="trauma-traffic" data-id="${opt.id}" aria-pressed="${pressed}">
           ${bilingualButtonLabel(opt.labels)}
         </button>`;
     }).join("");
     const vehicleBlock =
-      detail.traumaTraffic === "traffic"
+      screen.traumaTraffic === "traffic"
         ? `
       <section class="section">
         <h2>${bilingualSectionTitle(UI_COPY.traumaVehicleTitle)}</h2>
         <div class="option-grid cols-2">${TRAUMA_VEHICLE_OPTIONS.map((opt) => {
-          const pressed = detail.traumaVehicleId === opt.id;
+          const pressed = screen.traumaVehicleId === opt.id;
           return `
             <button type="button" class="option" data-action="trauma-vehicle" data-id="${opt.id}" aria-pressed="${pressed}">
               ${bilingualButtonLabel(opt.labels)}
@@ -846,31 +842,31 @@ function renderChiefComplaint1(): void {
       </section>`
         : "";
     const injuryBlock =
-      detail.traumaTraffic === "non_traffic"
+      screen.traumaTraffic === "non_traffic"
         ? `
       <section class="section grow">
         <h2>${bilingualSectionTitle(UI_COPY.traumaInjuryTitle)}</h2>
         <div class="option-grid cols-2">${TRAUMA_INJURY_OPTIONS.map((opt) => {
-          const pressed = detail.traumaInjuryTypeId === opt.id;
+          const pressed = screen.traumaInjuryTypeId === opt.id;
           return `
             <button type="button" class="option" data-action="trauma-injury" data-id="${opt.id}" aria-pressed="${pressed}">
               ${bilingualButtonLabel(opt.labels)}
             </button>`;
         }).join("")}</div>
         ${
-          traumaAsksFallHeight(state)
+          screen.traumaAsksFallHeight
             ? `
         <label class="field">
           <span class="field-label">${bilingualSectionTitle(UI_COPY.traumaFallHeight)}</span>
           <input type="number" min="0" step="0.1" inputmode="decimal" data-action="trauma-fall-height" value="${
-            detail.traumaFallHeightMeters ?? ""
+            screen.traumaFallHeightMeters ?? ""
           }" />
           ${
-            detail.traumaFallHeightMeters != null
+            screen.traumaFallHeightMeters != null
               ? `<p class="lead">${escapeHtml(
-                  formatMetersWithImperial(detail.traumaFallHeightMeters, "zh"),
+                  formatMetersWithImperial(screen.traumaFallHeightMeters, "zh"),
                 )} · ${escapeHtml(
-                  formatMetersWithImperial(detail.traumaFallHeightMeters, "en"),
+                  formatMetersWithImperial(screen.traumaFallHeightMeters, "en"),
                 )}</p>`
               : ""
           }
@@ -908,9 +904,9 @@ function renderChiefComplaint1(): void {
     return;
   }
 
-  const nonTrauma = usesNonTraumaPrimary(state);
-  const drillRegion = detail.drilldownRegionId
-    ? getBodyRegion(detail.drilldownRegionId)
+  const nonTrauma = screen.usesNonTraumaPrimary;
+  const drillRegion = screen.drilldownRegionId
+    ? getBodyRegion(screen.drilldownRegionId)
     : undefined;
 
   if (!nonTrauma && drillRegion && drillRegion.subregions.length > 0) {
@@ -918,7 +914,7 @@ function renderChiefComplaint1(): void {
       eyebrow: "主訴 · 1／3",
       titleSuffix: " — finer location",
       region: drillRegion,
-      selectedSubIds: detail.bodySubregionIds,
+      selectedSubIds: screen.bodySubregionIds,
       subAction: "cc1-sub",
       doneAction: "cc1-drill-done",
       leadZhSuffix: "更精確位置（選填）",
@@ -928,7 +924,7 @@ function renderChiefComplaint1(): void {
 
   const catalog = NON_TRAUMA_PRIMARY_REASONS;
   const complaintButtons = catalog.map((opt) => {
-    const pressed = detail.complaintTypeIds.includes(opt.id);
+    const pressed = screen.complaintTypeIds.includes(opt.id);
     return `
       <button
         type="button"
@@ -943,7 +939,7 @@ function renderChiefComplaint1(): void {
   }).join("");
 
   const noteBlock =
-    nonTrauma && primaryOpensNote(state)
+    nonTrauma && screen.primaryOpensNote
       ? `
       <section class="section emt-only compact">
         <h2>EMT 備註「其他」（患者不用打字）</h2>
@@ -952,7 +948,7 @@ function renderChiefComplaint1(): void {
           <input
             type="text"
             data-action="cc1-note"
-            value="${escapeAttr(getPrimaryNote(state))}"
+            value="${escapeAttr(screen.primaryNote)}"
           />
         </label>
       </section>`
@@ -982,12 +978,13 @@ function renderChiefComplaint1(): void {
 }
 
 function renderChiefComplaintQuality(): void {
-  const detail = getChiefComplaintQualityDetail(state);
-  const pain = showsPainScale(state);
+  const screen = viewFacts(state).screen;
+  if (screen.step !== "chief_complaint_quality") return;
+  const pain = screen.showsPainScale;
 
   const qualityButtons = visibleQualityOptions(pain)
     .map((opt) => {
-      const pressed = detail.qualityIds.includes(opt.id);
+      const pressed = screen.qualityIds.includes(opt.id);
       return `
         <button
           type="button"
@@ -1005,7 +1002,7 @@ function renderChiefComplaintQuality(): void {
   const painButtons = pain
     ? Array.from({ length: 10 }, (_, i) => i + 1)
         .map((n) => {
-          const pressed = detail.painScore === n;
+          const pressed = screen.painScore === n;
           return `
             <button
               type="button"
@@ -1019,13 +1016,7 @@ function renderChiefComplaintQuality(): void {
         .join("")
     : "";
 
-  const status = state.answers.chief_complaint_quality?.status;
-  const statusNote =
-    status === "unknown"
-      ? `<p class="status-note">已標示：不知道</p>`
-      : status === "skipped"
-        ? `<p class="status-note">已標示：跳過</p>`
-        : "";
+  const statusNote = answerStatusNote(screen.answerStatus);
 
   const title = bilingualHeading(UI_COPY.ccQualityTitle);
   const quality = bilingualSectionTitle(UI_COPY.ccQuality);
@@ -1068,8 +1059,28 @@ function renderChiefComplaintQuality(): void {
   });
 }
 
+function durationLabelFromScreen(
+  screen: {
+    timeAmount: number | null;
+    timeUnit: "minutes" | "hours" | "days" | null;
+    timeBucketId: string | null;
+  },
+  lang: "zh" | SecondLanguage,
+): string {
+  if (screen.timeAmount && screen.timeUnit) {
+    return formatApproxDuration(screen.timeAmount, screen.timeUnit, lang);
+  }
+  if (screen.timeBucketId) {
+    const labels = TIME_BUCKETS.find((b) => b.id === screen.timeBucketId)?.labels;
+    if (!labels) return screen.timeBucketId;
+    return lang === "zh" ? labels.zh : labels[lang];
+  }
+  return "";
+}
+
 function renderChiefComplaintDuration(): void {
-  const detail = getChiefComplaintDurationDetail(state);
+  const screen = viewFacts(state).screen;
+  if (screen.step !== "chief_complaint_duration") return;
   const lang = secondLang();
 
   const justNow = TIME_BUCKETS.find((b) => b.id === "just_now");
@@ -1080,7 +1091,7 @@ function renderChiefComplaintDuration(): void {
         class="option"
         data-action="ccd-time"
         data-id="${justNow.id}"
-        aria-pressed="${detail.timeBucketId === justNow.id}"
+        aria-pressed="${screen.timeBucketId === justNow.id}"
       >
         ${bilingualButtonLabel(justNow.labels)}
       </button>
@@ -1088,7 +1099,7 @@ function renderChiefComplaintDuration(): void {
     : "";
 
   const unitButtons = TIME_UNITS.map((unit) => {
-    const pressed = detail.timeUnit === unit.id;
+    const pressed = screen.timeUnit === unit.id;
     return `
       <button
         type="button"
@@ -1104,7 +1115,7 @@ function renderChiefComplaintDuration(): void {
 
   const periodButtons = TIME_BUCKETS.filter((b) => b.mode === "period")
     .map((opt) => {
-      const pressed = detail.timeBucketId === opt.id;
+      const pressed = screen.timeBucketId === opt.id;
       return `
         <button
           type="button"
@@ -1119,13 +1130,7 @@ function renderChiefComplaintDuration(): void {
     })
     .join("");
 
-  const status = state.answers.chief_complaint_duration?.status;
-  const statusNote =
-    status === "unknown"
-      ? `<p class="status-note">已標示：不知道</p>`
-      : status === "skipped"
-        ? `<p class="status-note">已標示：跳過</p>`
-        : "";
+  const statusNote = answerStatusNote(screen.answerStatus);
 
   const title = bilingualHeading(UI_COPY.ccDurationTitle);
   const duration = bilingualSectionTitle(UI_COPY.ccDuration);
@@ -1137,14 +1142,8 @@ function renderChiefComplaintDuration(): void {
   );
   const period = bilingualSectionTitle(UI_COPY.ccPeriod);
 
-  const previewZh =
-    detail.timeAmount && detail.timeUnit
-      ? formatApproxDuration(detail.timeAmount, detail.timeUnit, "zh")
-      : "";
-  const previewOther =
-    detail.timeAmount && detail.timeUnit
-      ? formatApproxDuration(detail.timeAmount, detail.timeUnit, lang)
-      : formatDurationForLang(state, lang);
+  const previewZh = durationLabelFromScreen(screen, "zh");
+  const previewOther = durationLabelFromScreen(screen, lang);
   const previewBlock =
     previewZh || previewOther
       ? `<p class="duration-preview" aria-live="polite">
@@ -1183,7 +1182,7 @@ function renderChiefComplaintDuration(): void {
             step="1"
             placeholder="＿＿"
             data-action="ccd-time-amount"
-            value="${detail.timeAmount ?? ""}"
+            value="${screen.timeAmount ?? ""}"
           />
           <div class="option-grid cols-3 unit-grid">${unitButtons}</div>
         </div>
@@ -1205,7 +1204,7 @@ function renderChiefComplaintDuration(): void {
           type="text"
           data-action="ccd-refine"
           placeholder="例如：約 14:10 開始／發作已 25 分鐘"
-          value="${escapeAttr(detail.timeRefine)}"
+          value="${escapeAttr(screen.timeRefine)}"
         />
       </section>
       ${statusNote}
@@ -1322,13 +1321,7 @@ function renderOtherSymptoms(): void {
     })
     .join("");
 
-  const status = state.answers.other_symptoms?.status;
-  const statusNote =
-    status === "unknown"
-      ? `<p class="status-note">已標示：不知道</p>`
-      : status === "skipped"
-        ? `<p class="status-note">已標示：跳過</p>`
-        : "";
+  const statusNote = answerStatusNote(screen.answerStatus);
 
   const title = bilingualHeading(UI_COPY.senseTitle);
   const lead = bilingualInline(UI_COPY.senseLead, secondLang(), INTERVIEW_PRIMACY);
@@ -1484,7 +1477,8 @@ function refreshDurationNextAndPreview(): void {
   if (nextBtn) {
     nextBtn.disabled = !viewFacts(state).gate.nextEnabled;
   }
-  const detail = getChiefComplaintDurationDetail(state);
+  const screen = viewFacts(state).screen;
+  if (screen.step !== "chief_complaint_duration") return;
   const preview = app!.querySelector(".duration-preview");
   if (!preview) return;
   const lang = secondLang();
@@ -1494,22 +1488,14 @@ function refreshDurationNextAndPreview(): void {
     INTERVIEW_PRIMACY,
   );
   const about = bilingualInline(UI_COPY.ccDurationAbout, lang, INTERVIEW_PRIMACY);
-  if (detail.timeAmount && detail.timeUnit) {
-    const zh = formatApproxDuration(
-      detail.timeAmount,
-      detail.timeUnit,
-      "zh",
-    );
-    const other = formatApproxDuration(
-      detail.timeAmount,
-      detail.timeUnit,
-      lang,
-    );
+  const zh = durationLabelFromScreen(screen, "zh");
+  const other = durationLabelFromScreen(screen, lang);
+  if (zh || other) {
     preview.classList.remove("is-empty");
     preview.innerHTML = `
       <span class="preview-label">${previewLabel.primary} · ${previewLabel.secondary}</span>
-      <span class="zh">${other}</span>
-      <span class="sub">${zh}</span>
+      <span class="zh">${other || "—"}</span>
+      <span class="sub">${zh || "—"}</span>
     `;
   } else {
     preview.classList.add("is-empty");
@@ -1524,7 +1510,7 @@ function refreshDurationNextAndPreview(): void {
   )) {
     btn.setAttribute(
       "aria-pressed",
-      String(btn.dataset.id === detail.timeUnit),
+      String(btn.dataset.id === screen.timeUnit),
     );
   }
   for (const btn of app!.querySelectorAll<HTMLButtonElement>(
@@ -1532,7 +1518,7 @@ function refreshDurationNextAndPreview(): void {
   )) {
     btn.setAttribute(
       "aria-pressed",
-      String(btn.dataset.id === detail.timeBucketId),
+      String(btn.dataset.id === screen.timeBucketId),
     );
   }
 }

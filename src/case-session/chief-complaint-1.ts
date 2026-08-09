@@ -14,6 +14,7 @@ import {
   toggleRegion,
   toggleSubregion,
 } from "./body-selection.js";
+import { nextAfterPrimary } from "./chief-complaint-path.js";
 import { nextSelectedIds } from "./option-selection.js";
 import {
   type CaseState,
@@ -334,48 +335,12 @@ export function canCompleteChiefComplaint1(state: CaseState): boolean {
   return true;
 }
 
-/**
- * Minimal non-OPQRST set that still opens「怎麼不舒服」.
- * Full trigger matrix is follow-up (ticket 07).
- */
-const NON_TRAUMA_QUALITY_TRIGGERS = new Set(["abdominal_pain", "pain"]);
-
-/**
- * Whether the shared quality step should appear after primary.
- * Unknown／skip primary and non-triggering non-trauma codes go straight to duration.
- * Chest OPQRST never uses this step.
- */
-export function needsQualityStep(state: CaseState): boolean {
-  const status = state.answers.chief_complaint_1?.status;
-  if (status !== "answered") return false;
-
-  if (usesTraumaPrimary(state)) return true;
-
-  const ids = readDetail(state).complaintTypeIds;
-  if (usesNonTraumaPrimary(state) && ids.includes("chest_pain")) {
-    return false;
-  }
-  return ids.some((id) => NON_TRAUMA_QUALITY_TRIGGERS.has(id));
-}
-
-function stepAfterPrimaryComplete(state: CaseState): CaseState["currentStep"] {
-  const detail = readDetail(state);
-  if (
-    usesNonTraumaPrimary(state) &&
-    detail.complaintTypeIds.includes("chest_pain")
-  ) {
-    return "chest_opqrst";
-  }
-  if (needsQualityStep(state)) return "chief_complaint_quality";
-  return "chief_complaint_duration";
-}
-
 export function completeChiefComplaint1(state: CaseState): CaseState {
   if (!canCompleteChiefComplaint1(state)) return state;
 
   const status = state.answers.chief_complaint_1?.status;
   if (status === "unknown" || status === "skipped") {
-    return { ...state, currentStep: "chief_complaint_duration" };
+    return { ...state, currentStep: nextAfterPrimary(state) };
   }
 
   if (usesTraumaPrimary(state)) {
@@ -383,17 +348,18 @@ export function completeChiefComplaint1(state: CaseState): CaseState {
     if (detail.traumaStage === "mechanism") {
       return writeDetail(state, { ...detail, traumaStage: "body" });
     }
-    return {
-      ...writeDetail(state, { ...detail, drilldownRegionId: null }),
-      currentStep: stepAfterPrimaryComplete(state),
-    };
+    const written = writeDetail(state, {
+      ...detail,
+      drilldownRegionId: null,
+    });
+    return { ...written, currentStep: nextAfterPrimary(written) };
   }
 
   const detail = { ...readDetail(state), drilldownRegionId: null };
   const written = writeDetail(state, detail);
   return {
     ...written,
-    currentStep: stepAfterPrimaryComplete(written),
+    currentStep: nextAfterPrimary(written),
   };
 }
 

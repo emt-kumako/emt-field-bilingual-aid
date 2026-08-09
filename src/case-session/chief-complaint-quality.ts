@@ -3,6 +3,10 @@ import {
   QUALITY_OPTIONS,
 } from "../catalog/chief-complaint-quality.js";
 import { getChiefComplaint1Detail } from "./chief-complaint-1.js";
+import {
+  backFromPathStep,
+  nextAfterQuality,
+} from "./chief-complaint-path.js";
 import { nextSelectedIds } from "./option-selection.js";
 import {
   type CaseState,
@@ -122,7 +126,7 @@ export function completeChiefComplaintQuality(state: CaseState): CaseState {
 
   const status = state.answers.chief_complaint_quality?.status;
   if (status === "unknown" || status === "skipped") {
-    return { ...state, currentStep: "chief_complaint_duration" };
+    return { ...state, currentStep: nextAfterQuality(state) };
   }
 
   let next = state;
@@ -130,9 +134,9 @@ export function completeChiefComplaintQuality(state: CaseState): CaseState {
     next = clearPainScore(state);
   }
 
-  return { ...next, currentStep: "chief_complaint_duration" };
+  return { ...next, currentStep: nextAfterQuality(next) };
 }
 
 export function goBackFromChiefComplaintQuality(state: CaseState): CaseState {
-  return { ...state, currentStep: "chief_complaint_1" };
+  return { ...state, currentStep: backFromPathStep(state) };
 }

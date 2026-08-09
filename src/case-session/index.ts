@@ -39,7 +39,6 @@ export {
   goBackFromChiefComplaint1,
   markChiefComplaint1Unknown,
   needsBodyLocation,
-  needsQualityStep,
   primaryOpensNote,
   setPrimaryNote,
   setTraumaFallHeightMeters,
@@ -83,6 +82,17 @@ export {
   setTimeUnknown,
   skipChiefComplaintDuration,
 } from "./chief-complaint-duration.js";
+export {
+  backFromPathStep,
+  chiefComplaintEditStep,
+  isChiefComplaintPathStep,
+  needsQualityStep,
+  nextAfterDuration,
+  nextAfterOpqrst,
+  nextAfterPrimary,
+  nextAfterQuality,
+} from "./chief-complaint-path.js";
+export { gateForChiefComplaintPath } from "./chief-complaint-path-gate.js";
 export {
   canCompleteChestOpqrst,
   completeChestOpqrst,

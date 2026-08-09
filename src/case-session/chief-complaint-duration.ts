@@ -3,7 +3,10 @@ import {
   getTimeBucket,
   getTimeUnit,
 } from "../catalog/chief-complaint-duration.js";
-import { needsQualityStep } from "./chief-complaint-1.js";
+import {
+  backFromPathStep,
+  nextAfterDuration,
+} from "./chief-complaint-path.js";
 import {
   type CaseState,
   type ChiefComplaintDurationDetail,
@@ -218,12 +221,9 @@ export function durationSatisfiedFromOpqrst(state: CaseState): boolean {
 /** Finish 多久了 → 之前. */
 export function completeChiefComplaintDuration(state: CaseState): CaseState {
   if (!canCompleteChiefComplaintDuration(state)) return state;
-  return { ...state, currentStep: "before" };
+  return { ...state, currentStep: nextAfterDuration(state) };
 }
 
 export function goBackFromChiefComplaintDuration(state: CaseState): CaseState {
-  if (needsQualityStep(state)) {
-    return { ...state, currentStep: "chief_complaint_quality" };
-  }
-  return { ...state, currentStep: "chief_complaint_1" };
+  return { ...state, currentStep: backFromPathStep(state) };
 }
