@@ -687,6 +687,7 @@ function renderChestOpqrst(): void {
         ${bilingualButtonLabel(u.labels)}
       </button>`;
   }).join("");
+  const statusNote = answerStatusNote(screen.answerStatus);
 
   getView().innerHTML = screenLayout({
     header: `
@@ -746,6 +747,7 @@ function renderChestOpqrst(): void {
           ${bilingualButtonLabel(OPQRST_TIME_UNKNOWN_LABELS)}
         </button>
       </section>
+      ${statusNote}
       ${softGateNote()}
     `,
     actions: `
