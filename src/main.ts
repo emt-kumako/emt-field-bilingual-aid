@@ -11,6 +11,7 @@ import {
   formatMetersWithImperial,
 } from "./catalog/trauma-primary.js";
 import {
+  OPQRST_LETTER_GLOSS,
   OPQRST_ONSET,
   OPQRST_PROVOCATION,
   OPQRST_QUALITY,
@@ -731,14 +732,74 @@ function optionButtons(
     .join("");
 }
 
+function opqrstLetterHeading(
+  letter: keyof typeof OPQRST_LETTER_GLOSS,
+  suffix = "",
+): string {
+  const gloss = OPQRST_LETTER_GLOSS[letter][secondLang()];
+  return `${letter} [${escapeHtml(gloss)}]${suffix}`;
+}
+
+function opqrstTimeSentence(
+  screen: {
+    timePattern: string | null;
+    timeAmount: number | null;
+    timeUnit: "minutes" | "hours" | "days" | null;
+    timeUnknown: boolean;
+  },
+  lang: "zh" | SecondLanguage,
+): string {
+  const pickLabel = (labels: BilingualText): string =>
+    lang === "zh" ? labels.zh : labels[lang];
+  const chunks: string[] = [];
+  if (screen.timePattern) {
+    const labels = OPQRST_TIME_PATTERN.find(
+      (o) => o.id === screen.timePattern,
+    )?.labels;
+    if (labels) chunks.push(pickLabel(labels));
+  }
+  if (screen.timeUnknown) {
+    chunks.push(pickLabel(OPQRST_TIME_UNKNOWN_LABELS));
+  } else if (screen.timeAmount && screen.timeUnit) {
+    const dur = formatApproxDuration(
+      screen.timeAmount,
+      screen.timeUnit,
+      lang,
+    );
+    if (dur) chunks.push(dur);
+  }
+  if (!chunks.length) return "";
+  if (lang === "zh" || lang === "ja" || lang === "ko") return chunks.join("，");
+  return chunks.join(", ");
+}
+
+function opqrstTimePreviewHtml(screen: {
+  timePattern: string | null;
+  timeAmount: number | null;
+  timeUnit: "minutes" | "hours" | "days" | null;
+  timeUnknown: boolean;
+}): string {
+  const lang = secondLang();
+  const sentence = opqrstTimeSentence(screen, lang);
+  if (!sentence) {
+    return `<p class="duration-preview is-empty" data-opqrst-time-preview aria-live="polite"></p>`;
+  }
+  return `
+    <p class="duration-preview" data-opqrst-time-preview aria-live="polite">
+      <span class="zh">${escapeHtml(sentence)}</span>
+    </p>`;
+}
+
 function renderChestOpqrst(): void {
   const screen = viewFacts(state).screen;
   if (screen.step !== "chest_opqrst") return;
+  const lang = secondLang();
   const sourceNote = bilingualInline(
     PAIN_SCALE_SOURCE_NOTE,
-    secondLang(),
+    lang,
     INTERVIEW_PRIMACY,
   );
+  const about = bilingualInline(UI_COPY.ccDurationAbout, lang, INTERVIEW_PRIMACY);
   const unitButtons = TIME_UNITS.map((u) => {
     const pressed = screen.timeUnit === u.id;
     return `
@@ -747,46 +808,47 @@ function renderChestOpqrst(): void {
       </button>`;
   }).join("");
   const statusNote = answerStatusNote(screen.answerStatus);
+  const title = bilingualHeading(UI_COPY.ccOpqrstTitle);
 
   getView().innerHTML = screenLayout({
     header: `
       <header class="step-header">
         <p class="eyebrow">主訴</p>
-        <h1>胸痛／胸悶 · 怎麼發生的</h1>
-        <p class="lead">Chest pain / tightness · how it started</p>
+        <h1>${title.title}</h1>
+        <p class="lead">${title.lead}</p>
       </header>
     `,
     body: `
       <section class="section">
-        <h2>O</h2>
+        <h2>${opqrstLetterHeading("O")}</h2>
         <div class="option-grid cols-2">${optionButtons(OPQRST_ONSET, "opqrst-onset", screen.onsetId)}</div>
       </section>
       <section class="section">
-        <h2>P</h2>
+        <h2>${opqrstLetterHeading("P")}</h2>
         <div class="option-grid cols-2">${optionButtons(OPQRST_PROVOCATION, "opqrst-provocation", screen.provocationIds)}</div>
       </section>
       <section class="section">
-        <h2>Q</h2>
+        <h2>${opqrstLetterHeading("Q")}</h2>
         <div class="option-grid cols-2">${optionButtons(OPQRST_QUALITY, "opqrst-quality", screen.qualityId)}</div>
       </section>
       <section class="section">
-        <h2>R</h2>
+        <h2>${opqrstLetterHeading("R")}</h2>
         <div class="option-grid cols-2">${optionButtons(OPQRST_REGIONS, "opqrst-region", screen.regionIds)}</div>
       </section>
       <section class="section">
-        <h2>S · 0–10</h2>
+        <h2>${opqrstLetterHeading("S", " · 0–10")}</h2>
         ${painScaleBlockHtml(0, screen.severity, "opqrst-severity")}
         <p class="source-note">${escapeHtml(sourceNote.primary)} · ${escapeHtml(sourceNote.secondary)}
           <a href="${PAIN_SCALE_SOURCE_URL}" target="_blank" rel="noopener noreferrer">medicalxpress.com</a>
         </p>
       </section>
       <section class="section">
-        <h2>T</h2>
+        <h2>${opqrstLetterHeading("T")}</h2>
         <div class="option-grid cols-2">${optionButtons(OPQRST_TIME_PATTERN, "opqrst-time-pattern", screen.timePattern)}</div>
         <div class="opqrst-time-entry">
           <span class="duration-prefix">
-            <span class="zh">約</span>
-            <span class="sub">About</span>
+            <span class="zh">${about.primary}</span>
+            <span class="sub">${about.secondary}</span>
           </span>
           <input
             class="duration-amount"
@@ -800,6 +862,7 @@ function renderChestOpqrst(): void {
           />
           <div class="option-grid cols-3 unit-grid">${unitButtons}</div>
         </div>
+        ${opqrstTimePreviewHtml(screen)}
         <button type="button" class="option" data-action="opqrst-time-unknown" aria-pressed="${screen.timeUnknown}">
           ${bilingualButtonLabel(OPQRST_TIME_UNKNOWN_LABELS)}
         </button>
@@ -1406,9 +1469,8 @@ function renderSummary(): void {
     SUMMARY_PRIMACY,
   );
   const eyebrow = bilingualInline(SUMMARY_COPY.eyebrow, lang, SUMMARY_PRIMACY);
-  const lead = bilingualInline(SUMMARY_COPY.lead, lang, SUMMARY_PRIMACY);
   const edit = bilingualInline(SUMMARY_COPY.edit, lang, SUMMARY_PRIMACY);
-  const copyHint = bilingualInline(SUMMARY_COPY.copyHint, lang, SUMMARY_PRIMACY);
+  const summaryLeadZh = "現場資訊彙整，可複製後貼到紀錄；結束即清除。";
 
   const facts = viewFacts(state);
   const summaryScreen =
@@ -1442,17 +1504,13 @@ function renderSummary(): void {
       <header class="step-header">
         <p class="eyebrow"><span class="zh">${escapeHtml(eyebrow.primary)}</span> · <span class="sub">${escapeHtml(eyebrow.secondary)}</span></p>
         <h1>${escapeHtml(header.title)}</h1>
-        <p class="lead">${escapeHtml(header.lead)}</p>
-        <p class="lead subtle">${escapeHtml(lead.primary)} · ${escapeHtml(lead.secondary)}</p>
+        <p class="lead">${escapeHtml(summaryLeadZh)}</p>
       </header>
     `,
     body: `<div class="summary-list fill-grid">${sections}</div>`,
     actions: `
       <div class="actions">
-        <button type="button" class="secondary" data-action="summary-copy">
-          <span class="zh">${escapeHtml(copyHint.primary)}</span>
-          <span class="sub">${escapeHtml(copyHint.secondary)}</span>
-        </button>
+        <button type="button" class="secondary" data-action="summary-copy">複製摘要</button>
         <button type="button" class="primary" data-action="summary-finish">結束／新案件</button>
       </div>
       <p class="copy-status" data-copy-status hidden></p>
@@ -1512,6 +1570,29 @@ app.addEventListener("click", (event) => {
   render();
 });
 
+function refreshOpqrstTimePreview(): void {
+  const screen = viewFacts(state).screen;
+  if (screen.step !== "chest_opqrst") return;
+  const preview = app!.querySelector("[data-opqrst-time-preview]");
+  if (!preview) return;
+  const sentence = opqrstTimeSentence(screen, secondLang());
+  if (sentence) {
+    preview.classList.remove("is-empty");
+    preview.innerHTML = `<span class="zh">${escapeHtml(sentence)}</span>`;
+  } else {
+    preview.classList.add("is-empty");
+    preview.innerHTML = "";
+  }
+  for (const btn of app!.querySelectorAll<HTMLButtonElement>(
+    "button[data-action='ccd-time-unit']",
+  )) {
+    btn.setAttribute(
+      "aria-pressed",
+      String(btn.dataset.id === screen.timeUnit),
+    );
+  }
+}
+
 function refreshDurationNextAndPreview(): void {
   const nextBtn = app!.querySelector<HTMLButtonElement>(
     "button[data-action='ccd-next']",
@@ -1520,6 +1601,10 @@ function refreshDurationNextAndPreview(): void {
     nextBtn.disabled = !viewFacts(state).gate.nextEnabled;
   }
   const screen = viewFacts(state).screen;
+  if (screen.step === "chest_opqrst") {
+    refreshOpqrstTimePreview();
+    return;
+  }
   if (screen.step !== "chief_complaint_duration") return;
   const preview = app!.querySelector(".duration-preview");
   if (!preview) return;

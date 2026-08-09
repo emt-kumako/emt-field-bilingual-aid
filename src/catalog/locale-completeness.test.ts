@@ -26,6 +26,7 @@ import {
   TRAUMA_VEHICLE_OPTIONS,
 } from "./trauma-primary.js";
 import {
+  OPQRST_LETTER_GLOSS,
   OPQRST_ONSET,
   OPQRST_PROVOCATION,
   OPQRST_QUALITY,
@@ -121,6 +122,11 @@ describe("locale packs", () => {
     }
     assertComplete(OPQRST_TIME_UNKNOWN_LABELS, "opqrst:timeUnknown");
     assertComplete(PAIN_SCALE_SOURCE_NOTE, "opqrst:painScaleSource");
+    for (const letter of Object.keys(OPQRST_LETTER_GLOSS) as Array<
+      keyof typeof OPQRST_LETTER_GLOSS
+    >) {
+      assertComplete(OPQRST_LETTER_GLOSS[letter], `opqrstLetter:${letter}`);
+    }
   });
 
   it("fails loudly when a second-language string is missing", () => {

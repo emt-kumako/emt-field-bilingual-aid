@@ -49,6 +49,18 @@ export const UI_COPY = {
       fr: "(Carte du corps facultative pour cette plainte)",
       es: "(Mapa corporal opcional para esta molestia)",
     }),
+  ccOpqrstTitle: L("胸痛／胸悶 · 怎麼發生的", {
+    en: "Chest pain / tightness · how it started",
+    vi: "Đau ngực / tức ngực · diễn biến thế nào?",
+    id: "Nyeri / sesak dada · bagaimana mulai?",
+    ja: "胸痛・胸の圧迫感 · どう始まりましたか",
+    ko: "흉통/가슴 답답 · 어떻게 시작됐나요?",
+    fil: "Sakit / paninikip ng dibdib · paano nagsimula?",
+    th: "เจ็บ/แน่นหน้าอก · เริ่มอย่างไร?",
+    de: "Brustschmerz / Enge · wie hat es begonnen?",
+    fr: "Douleur / oppression thoracique · comment cela a commencé ?",
+    es: "Dolor / opresión torácica · ¿cómo empezó?",
+  }),
   ccQualityTitle: L("怎麼不舒服？", {
     en: "How does it feel?",
     vi: "Cảm giác thế nào?",
