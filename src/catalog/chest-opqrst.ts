@@ -1,6 +1,10 @@
 import { L, type BilingualText } from "./labels.js";
 
-export type LabeledId = { id: string; labels: BilingualText };
+export type LabeledId = {
+  id: string;
+  labels: BilingualText;
+  exclusive?: boolean;
+};
 
 export const OPQRST_ONSET: LabeledId[] = [
   {
@@ -52,6 +56,21 @@ export const OPQRST_PROVOCATION: LabeledId[] = [
     }),
   },
   {
+    id: "position_no_help",
+    labels: L("姿勢無法緩解", {
+      en: "Position does not help",
+      vi: "Đổi tư thế không đỡ",
+      id: "Ubah posisi tidak meredakan",
+      ja: "姿勢を変えても楽にならない",
+      ko: "자세 바꿔도 안 나아짐",
+      fil: "Hindi gumagaan sa pagpapalit ng postura",
+      th: "เปลี่ยนท่าแล้วไม่ดีขึ้น",
+      de: "Lagewechsel lindert nicht",
+      fr: "Changer de position ne soulage pas",
+      es: "Cambiar de postura no alivia",
+    }),
+  },
+  {
     id: "meds_help",
     labels: L("服藥會緩解", {
       en: "Medication helps",
@@ -66,22 +85,37 @@ export const OPQRST_PROVOCATION: LabeledId[] = [
       es: "La medicación alivia",
     }),
   },
+  {
+    id: "meds_no_help",
+    labels: L("服藥無法緩解", {
+      en: "Medication does not help",
+      vi: "Uống thuốc không đỡ",
+      id: "Obat tidak meredakan",
+      ja: "薬でも楽にならない",
+      ko: "약 먹어도 안 나아짐",
+      fil: "Hindi gumagaan sa gamot",
+      th: "กินยาแล้วไม่ดีขึ้น",
+      de: "Medikamente lindern nicht",
+      fr: "Les médicaments ne soulagent pas",
+      es: "La medicación no alivia",
+    }),
+  },
 ];
 
 export const OPQRST_QUALITY: LabeledId[] = [
   {
-    id: "stabbing",
-    labels: L("刺痛", {
-      en: "Stabbing",
-      vi: "Đau nhói",
-      id: "Nyeri tusuk",
-      ja: "刺すような痛み",
-      ko: "찌르는 통증",
-      fil: "Tusok-tusok",
-      th: "เจ็บแปลบ",
-      de: "Stechend",
-      fr: "En coup de poignard",
-      es: "Punzante",
+    id: "tearing",
+    labels: L("撕裂痛", {
+      en: "Tearing / ripping",
+      vi: "Đau xé",
+      id: "Nyeri seperti robek",
+      ja: "裂けるような痛み",
+      ko: "찢어지는 통증",
+      fil: "Parang napunit",
+      th: "เจ็บเหมือนฉีก",
+      de: "Reißend",
+      fr: "Déchirante",
+      es: "Desgarrante",
     }),
   },
   {
@@ -97,6 +131,21 @@ export const OPQRST_QUALITY: LabeledId[] = [
       de: "Druck / Enge",
       fr: "Pression / oppression",
       es: "Presión / opresión",
+    }),
+  },
+  {
+    id: "stabbing",
+    labels: L("刺痛", {
+      en: "Stabbing",
+      vi: "Đau nhói",
+      id: "Nyeri tusuk",
+      ja: "刺すような痛み",
+      ko: "찌르는 통증",
+      fil: "Tusok-tusok",
+      th: "เจ็บแปลบ",
+      de: "Stechend",
+      fr: "En coup de poignard",
+      es: "Punzante",
     }),
   },
   {
@@ -116,20 +165,21 @@ export const OPQRST_QUALITY: LabeledId[] = [
   },
 ];
 
+/** R region／radiation sites shown as one flat multi-select list. */
 export const OPQRST_REGIONS: LabeledId[] = [
   {
-    id: "chest_front",
-    labels: L("胸前", {
-      en: "Front of chest",
-      vi: "Trước ngực",
-      id: "Depan dada",
-      ja: "胸の前",
-      ko: "앞가슴",
-      fil: "Harap ng dibdib",
-      th: "หน้าอกด้านหน้า",
-      de: "Brust vorn",
-      fr: "Devant la poitrine",
-      es: "Pecho frontal",
+    id: "jaw_neck",
+    labels: L("下巴／脖子", {
+      en: "Jaw / neck",
+      vi: "Hàm / cổ",
+      id: "Rahang / leher",
+      ja: "あご／首",
+      ko: "턱/목",
+      fil: "Panga / leeg",
+      th: "คาง/คอ",
+      de: "Kiefer / Hals",
+      fr: "Mâchoire / cou",
+      es: "Mandíbula / cuello",
     }),
   },
   {
@@ -178,99 +228,55 @@ export const OPQRST_REGIONS: LabeledId[] = [
     }),
   },
   {
-    id: "back",
-    labels: L("背部", {
-      en: "Back",
-      vi: "Lưng",
-      id: "Punggung",
-      ja: "背中",
-      ko: "등",
-      fil: "Likod",
-      th: "หลัง",
-      de: "Rücken",
-      fr: "Dos",
-      es: "Espalda",
+    id: "shoulder",
+    labels: L("肩膀", {
+      en: "Shoulder",
+      vi: "Vai",
+      id: "Bahu",
+      ja: "肩",
+      ko: "어깨",
+      fil: "Balikat",
+      th: "ไหล่",
+      de: "Schulter",
+      fr: "Épaule",
+      es: "Hombro",
+    }),
+  },
+  {
+    id: "lower_back",
+    labels: L("下背", {
+      en: "Lower back",
+      vi: "Lưng dưới",
+      id: "Pinggang bawah",
+      ja: "腰／下背部",
+      ko: "허리/아래등",
+      fil: "Ibaba ng likod",
+      th: "หลังส่วนล่าง",
+      de: "Unterer Rücken",
+      fr: "Bas du dos",
+      es: "Zona lumbar",
+    }),
+  },
+  {
+    id: "none",
+    exclusive: true,
+    labels: L("無", {
+      en: "None",
+      vi: "Không",
+      id: "Tidak ada",
+      ja: "なし",
+      ko: "없음",
+      fil: "Wala",
+      th: "ไม่มี",
+      de: "Keine",
+      fr: "Aucun",
+      es: "Ninguno",
     }),
   },
 ];
 
-export const OPQRST_RADIATION_SITES: LabeledId[] = [
-  {
-    id: "jaw",
-    labels: L("下顎", {
-      en: "Jaw",
-      vi: "Hàm",
-      id: "Rahang",
-      ja: "あご",
-      ko: "턱",
-      fil: "Panga",
-      th: "คาง/ขากรรไกร",
-      de: "Kiefer",
-      fr: "Mâchoire",
-      es: "Mandíbula",
-    }),
-  },
-  {
-    id: "left_arm",
-    labels: L("左臂", {
-      en: "Left arm",
-      vi: "Cánh tay trái",
-      id: "Lengan kiri",
-      ja: "左腕",
-      ko: "왼팔",
-      fil: "Kaliwang braso",
-      th: "แขนซ้าย",
-      de: "Linker Arm",
-      fr: "Bras gauche",
-      es: "Brazo izquierdo",
-    }),
-  },
-  {
-    id: "rad_back",
-    labels: L("背部", {
-      en: "Back",
-      vi: "Lưng",
-      id: "Punggung",
-      ja: "背中",
-      ko: "등",
-      fil: "Likod",
-      th: "หลัง",
-      de: "Rücken",
-      fr: "Dos",
-      es: "Espalda",
-    }),
-  },
-  {
-    id: "rad_epigastrium",
-    labels: L("上腹", {
-      en: "Upper abdomen",
-      vi: "Thượng vị",
-      id: "Ulu hati",
-      ja: "みぞおち",
-      ko: "상복부",
-      fil: "Itaas ng tiyan",
-      th: "ท้องส่วนบน",
-      de: "Oberbauch",
-      fr: "Épigastre",
-      es: "Epigastrio",
-    }),
-  },
-  {
-    id: "rad_other",
-    labels: L("其他放射處", {
-      en: "Other radiation site",
-      vi: "Chỗ lan khác",
-      id: "Menjalar ke tempat lain",
-      ja: "その他の放散",
-      ko: "다른 방사 부위",
-      fil: "Ibang lugar ng radiation",
-      th: "ร้าวไปที่อื่น",
-      de: "Andere Ausstrahlung",
-      fr: "Autre irradiation",
-      es: "Otra irradiación",
-    }),
-  },
-];
+/** @deprecated Radiation sites folded into OPQRST_REGIONS; kept empty for imports. */
+export const OPQRST_RADIATION_SITES: LabeledId[] = [];
 
 export const OPQRST_TIME_PATTERN: LabeledId[] = [
   {
@@ -331,22 +337,35 @@ export const OPQRST_RADIATION_TOGGLE_LABELS = L("有延伸／轉移", {
   es: "Irradia",
 });
 
-/** Emoji pain-scale reference (faces are visual aids, not a second control). */
+/** Faces cropped from the Pain Assessment Tool chart (public/pain-faces). */
+export const PAIN_FACE_ASSETS: {
+  file: string;
+  label: string;
+  start: number;
+  end: number;
+}[] = [
+  { file: "face-0.png", label: "0", start: 0, end: 0 },
+  { file: "face-1-3.png", label: "1–3", start: 1, end: 3 },
+  { file: "face-4-6.png", label: "4–6", start: 4, end: 6 },
+  { file: "face-7-9.png", label: "7–9", start: 7, end: 9 },
+  { file: "face-10.png", label: "10", start: 10, end: 10 },
+];
+
 export const PAIN_SCALE_SOURCE_URL =
   "https://medicalxpress.com/news/2022-07-emoji-shown-effective-numerical-pain.html";
 
 export const PAIN_SCALE_SOURCE_NOTE = L(
-  "參考來源：emoji 疼痛尺研究（點選 0–10）",
+  "參考來源：疼痛評估尺表情圖（點選 0–10）",
   {
-    en: "Source: emoji pain-scale research (tap 0–10)",
-    vi: "Nguồn: thang đau emoji (chọn 0–10)",
-    id: "Sumber: skala nyeri emoji (ketuk 0–10)",
-    ja: "出典：絵文字ペインスケール研究（0–10を選択）",
-    ko: "출처: 이모지 통증 척도 연구(0–10 선택)",
-    fil: "Pinagmulan: emoji pain scale (pindutin 0–10)",
-    th: "ที่มา: งานวิจัย pain scale แบบอีโมจิ (แตะ 0–10)",
-    de: "Quelle: Emoji-Schmerzskala-Studie (0–10 tippen)",
-    fr: "Source : échelle emoji (toucher 0–10)",
-    es: "Fuente: escala emoji (tocar 0–10)",
+    en: "Source: pain assessment faces (tap 0–10)",
+    vi: "Nguồn: thang đau mặt (chọn 0–10)",
+    id: "Sumber: wajah skala nyeri (ketuk 0–10)",
+    ja: "出典：ペインフェイス図（0–10を選択）",
+    ko: "출처: 통증 얼굴 척도(0–10 선택)",
+    fil: "Pinagmulan: pain face scale (pindutin 0–10)",
+    th: "ที่มา: หน้า pain scale (แตะ 0–10)",
+    de: "Quelle: Schmerzgesichter (0–10 tippen)",
+    fr: "Source : visages douleur (toucher 0–10)",
+    es: "Fuente: caras de dolor (tocar 0–10)",
   },
 );

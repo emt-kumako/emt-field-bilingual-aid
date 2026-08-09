@@ -124,7 +124,10 @@ export function setOpqrstQuality(state: CaseState, qualityId: string): CaseState
 }
 
 export function toggleOpqrstRegion(state: CaseState, id: string): CaseState {
-  const meta = OPQRST_REGIONS.map((o) => ({ id: o.id }));
+  const meta = OPQRST_REGIONS.map((o) => ({
+    id: o.id,
+    exclusive: o.exclusive,
+  }));
   if (!meta.some((o) => o.id === id)) return state;
   const detail = readDetail(state);
   return writeDetail(state, {

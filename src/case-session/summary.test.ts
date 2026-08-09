@@ -102,7 +102,7 @@ function finishedChestOpqrstCase(): CaseState {
 
   state = setOpqrstOnset(state, "sudden");
   state = setOpqrstQuality(state, "pressure");
-  state = toggleOpqrstRegion(state, "chest_front");
+  state = toggleOpqrstRegion(state, "chest_left");
   state = setOpqrstSeverity(state, 7);
   state = setOpqrstTimePattern(state, "continuous");
   state = setOpqrstTimeAmount(state, "30");

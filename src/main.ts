@@ -14,11 +14,10 @@ import {
   OPQRST_ONSET,
   OPQRST_PROVOCATION,
   OPQRST_QUALITY,
-  OPQRST_RADIATION_SITES,
   OPQRST_REGIONS,
   OPQRST_TIME_PATTERN,
   OPQRST_TIME_UNKNOWN_LABELS,
-  OPQRST_RADIATION_TOGGLE_LABELS,
+  PAIN_FACE_ASSETS,
   PAIN_SCALE_SOURCE_NOTE,
   PAIN_SCALE_SOURCE_URL,
 } from "./catalog/chest-opqrst.js";
@@ -86,29 +85,21 @@ function painScoreTextColor(score: number): string {
   return score <= 3 ? "#ffffff" : "#1a1a1a";
 }
 
-/** Face bands aligned to score columns (Wong-Baker-style reference). */
+/** Face bands aligned to score columns (cropped Pain Assessment Tool faces). */
 function painFaceRowHtml(minScore: 0 | 1): string {
   const cols = minScore === 0 ? 11 : 10;
-  const band = (start: number, end: number, face: string, label: string) => {
-    const colStart = start - minScore + 1;
-    const colEnd = end - minScore + 2;
-    return `<span class="pain-face" style="grid-column:${colStart} / ${colEnd}">${face}<small>${label}</small></span>`;
-  };
-  const faces =
-    minScore === 0
-      ? [
-          band(0, 0, "😀", "0"),
-          band(1, 3, "🙂", "1–3"),
-          band(4, 6, "😐", "4–6"),
-          band(7, 9, "😣", "7–9"),
-          band(10, 10, "😭", "10"),
-        ].join("")
-      : [
-          band(1, 3, "🙂", "1–3"),
-          band(4, 6, "😐", "4–6"),
-          band(7, 9, "😣", "7–9"),
-          band(10, 10, "😭", "10"),
-        ].join("");
+  const base = import.meta.env.BASE_URL;
+  const faces = PAIN_FACE_ASSETS.filter((f) => f.end >= minScore)
+    .map((f) => {
+      const start = Math.max(f.start, minScore);
+      const colStart = start - minScore + 1;
+      const colEnd = f.end - minScore + 2;
+      return `<span class="pain-face" style="grid-column:${colStart} / ${colEnd}">
+        <img src="${base}pain-faces/${f.file}" alt="" width="48" height="48" decoding="async" />
+        <small>${f.label}</small>
+      </span>`;
+    })
+    .join("");
   return `<div class="pain-face-row" style="--pain-cols:${cols}" aria-hidden="true">${faces}</div>`;
 }
 
@@ -273,12 +264,6 @@ function toIntent(
       return id ? { type: "edit", slot: "opqrstQuality", value: id } : null;
     case "opqrst-region":
       return id ? { type: "edit", slot: "opqrstRegion", value: id } : null;
-    case "opqrst-radiation":
-      return { type: "edit", slot: "opqrstRadiation" };
-    case "opqrst-radiation-site":
-      return id
-        ? { type: "edit", slot: "opqrstRadiationSite", value: id }
-        : null;
     case "opqrst-severity":
       return id ? { type: "edit", slot: "opqrstSeverity", value: id } : null;
     case "opqrst-time-pattern":
@@ -787,14 +772,6 @@ function renderChestOpqrst(): void {
       <section class="section">
         <h2>R</h2>
         <div class="option-grid cols-2">${optionButtons(OPQRST_REGIONS, "opqrst-region", screen.regionIds)}</div>
-        <button type="button" class="option" data-action="opqrst-radiation" aria-pressed="${screen.radiation}">
-          ${bilingualButtonLabel(OPQRST_RADIATION_TOGGLE_LABELS)}
-        </button>
-        ${
-          screen.radiation
-            ? `<div class="option-grid cols-2">${optionButtons(OPQRST_RADIATION_SITES, "opqrst-radiation-site", screen.radiationSiteIds)}</div>`
-            : ""
-        }
       </section>
       <section class="section">
         <h2>S · 0–10</h2>
