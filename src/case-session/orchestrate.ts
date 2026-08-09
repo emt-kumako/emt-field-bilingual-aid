@@ -89,15 +89,13 @@ import {
 } from "./list-step.js";
 import {
   canCompleteOtherSymptoms,
-  clearOtherBodyDrilldown,
   completeOtherSymptoms,
   getOtherSymptomsDetail,
   goBackFromOtherSymptoms,
   markOtherSymptomsUnknown,
+  secondaryCatalogKind,
   skipOtherSymptoms,
-  toggleAccompanyingSymptom,
-  toggleOtherBodyRegion,
-  toggleOtherBodySubregion,
+  toggleSecondaryReason,
 } from "./other-symptoms.js";
 import {
   buildSummarySections,
@@ -148,10 +146,7 @@ export type Slot =
   | "timeRefine"
   | "listOption"
   | "listNote"
-  | "accompanyingSymptom"
-  | "otherBodyRegion"
-  | "otherBodySubregion"
-  | "otherBodyDrilldown";
+  | "secondaryReason";
 
 export type Intent =
   | { type: "edit"; slot: Slot; value?: string }
@@ -233,10 +228,8 @@ export type ScreenFacts =
     }
   | {
       step: "other_symptoms";
-      symptomIds: string[];
-      bodyRegionIds: string[];
-      bodySubregionIds: string[];
-      drilldownRegionId: string | null;
+      reasonIds: string[];
+      secondaryCatalog: "trauma" | "non_trauma" | null;
     }
   | {
       step: "summary";
@@ -362,17 +355,9 @@ function applyEdit(state: CaseState, slot: Slot, value?: string): CaseState {
       if (!isHistoryStep(state.currentStep)) return state;
       return setListNote(state, state.currentStep, value ?? "");
     }
-    case "accompanyingSymptom":
+    case "secondaryReason":
       if (!value) return state;
-      return toggleAccompanyingSymptom(state, value);
-    case "otherBodyRegion":
-      if (!value) return state;
-      return toggleOtherBodyRegion(state, value);
-    case "otherBodySubregion":
-      if (!value) return state;
-      return toggleOtherBodySubregion(state, value);
-    case "otherBodyDrilldown":
-      return clearOtherBodyDrilldown(state);
+      return toggleSecondaryReason(state, value);
     default:
       return state;
   }
@@ -606,7 +591,7 @@ function gateFor(state: CaseState): GateFacts {
     case "other_symptoms":
       return canCompleteOtherSymptoms(state)
         ? { reason: null, nextEnabled: true }
-        : { reason: "need_other_symptom_or_body", nextEnabled: false };
+        : { reason: "need_secondary_reason", nextEnabled: false };
     case "summary":
       return { reason: null, nextEnabled: true };
     default:
@@ -707,10 +692,8 @@ function screenFor(state: CaseState): ScreenFacts {
       const d = getOtherSymptomsDetail(state);
       return {
         step: "other_symptoms",
-        symptomIds: d.symptomIds,
-        bodyRegionIds: d.bodyRegionIds,
-        bodySubregionIds: d.bodySubregionIds,
-        drilldownRegionId: d.drilldownRegionId,
+        reasonIds: d.reasonIds,
+        secondaryCatalog: secondaryCatalogKind(state),
       };
     }
     case "summary":

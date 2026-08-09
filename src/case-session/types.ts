@@ -32,7 +32,7 @@ export type GateReason =
   | "need_duration"
   | "need_opqrst"
   | "need_list_selection"
-  | "need_other_symptom_or_body";
+  | "need_secondary_reason";
 
 /** Interview mnemonic steps after start. */
 export type InterviewStep =
@@ -163,20 +163,14 @@ export function emptyChestOpqrstDetail(): ChestOpqrstDetail {
   };
 }
 
-/** 感 payload in answers.other_symptoms.detail */
+/** Secondary-reason payload in answers.other_symptoms.detail */
 export type OtherSymptomsDetail = {
-  symptomIds: string[];
-  bodyRegionIds: string[];
-  bodySubregionIds: string[];
-  drilldownRegionId: string | null;
+  reasonIds: string[];
 };
 
 export function emptyOtherSymptomsDetail(): OtherSymptomsDetail {
   return {
-    symptomIds: [],
-    bodyRegionIds: [],
-    bodySubregionIds: [],
-    drilldownRegionId: null,
+    reasonIds: [],
   };
 }
 

@@ -118,15 +118,14 @@ export {
 } from "./list-step.js";
 export {
   canCompleteOtherSymptoms,
-  clearOtherBodyDrilldown,
   completeOtherSymptoms,
   getOtherSymptomsDetail,
   goBackFromOtherSymptoms,
   markOtherSymptomsUnknown,
+  secondaryCatalogKind,
   skipOtherSymptoms,
   toggleAccompanyingSymptom,
-  toggleOtherBodyRegion,
-  toggleOtherBodySubregion,
+  toggleSecondaryReason,
 } from "./other-symptoms.js";
 export {
   buildSummarySections,

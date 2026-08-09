@@ -12,16 +12,19 @@ import {
   bilingualPair,
   type BilingualText,
 } from "./labels.js";
-import { ACCOMPANYING_SYMPTOMS } from "./other-symptoms.js";
 import { SUMMARY_COPY } from "./summary-copy.js";
 import { UI_COPY } from "./ui-copy.js";
 import { NON_TRAUMA_PRIMARY_REASONS } from "./non-trauma-primary.js";
+import {
+  NON_TRAUMA_SECONDARY_REASONS,
+} from "./secondary-reason.js";
 import {
   TRAUMA_INJURY_OPTIONS,
   TRAUMA_OHCA_LABELS,
   TRAUMA_TRAFFIC_OPTIONS,
   TRAUMA_VEHICLE_OPTIONS,
 } from "./trauma-primary.js";
+import { TRAUMA_SECONDARY_SENSATIONS } from "./trauma-secondary.js";
 import {
   OPQRST_ONSET,
   OPQRST_PROVOCATION,
@@ -72,8 +75,11 @@ describe("locale packs", () => {
         assertComplete(opt.labels, `history:${step.id}/${opt.id}`);
       }
     }
-    for (const s of ACCOMPANYING_SYMPTOMS) {
-      assertComplete(s.labels, `sense:${s.id}`);
+    for (const s of NON_TRAUMA_SECONDARY_REASONS) {
+      assertComplete(s.labels, `nonTraumaSecondary:${s.id}`);
+    }
+    for (const s of TRAUMA_SECONDARY_SENSATIONS) {
+      assertComplete(s.labels, `traumaSecondary:${s.id}`);
     }
     for (const [key, text] of Object.entries(UI_COPY)) {
       assertComplete(text, `ui:${key}`);

@@ -29,7 +29,7 @@ import {
 } from "./list-step.js";
 import {
   completeOtherSymptoms,
-  toggleAccompanyingSymptom,
+  toggleSecondaryReason,
 } from "./other-symptoms.js";
 import {
   buildSummarySections,
@@ -69,7 +69,7 @@ function finishedCase() {
   state = toggleListOption(state, "allergies", "none");
   state = completeListStep(state, "allergies");
 
-  state = toggleAccompanyingSymptom(state, "cold_sweat");
+  state = toggleSecondaryReason(state, "pain");
   return completeOtherSymptoms(state);
 }
 
@@ -89,8 +89,9 @@ describe("summary + clear", () => {
     expect(byKey.past_history?.obtained).toBe(false);
     expect(byKey.past_history?.value.zh).toContain("不知道");
     expect(byKey.medications?.value.zh).toContain("自備成藥");
-    expect(byKey.other_symptoms?.value.zh).toContain("冒冷汗");
-    expect(byKey.other_symptoms?.value.other.toLowerCase()).toContain("sweat");
+    expect(byKey.other_symptoms?.value.zh).toContain("疼痛");
+    expect(byKey.other_symptoms?.value.other.toLowerCase()).toContain("pain");
+    expect(byKey.other_symptoms?.label.zh).toContain("還有其他感覺不舒服的地方");
 
     const text = formatSummaryText(state);
     expect(text).toContain("本機摘要");

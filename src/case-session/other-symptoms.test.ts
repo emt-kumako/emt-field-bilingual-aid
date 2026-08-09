@@ -11,54 +11,70 @@ import {
   completeOtherSymptoms,
   getOtherSymptomsDetail,
   markOtherSymptomsUnknown,
+  secondaryCatalogKind,
   skipOtherSymptoms,
-  toggleAccompanyingSymptom,
-  toggleOtherBodyRegion,
+  toggleSecondaryReason,
 } from "./other-symptoms.js";
 import type { CaseState } from "./types.js";
 
-function atOtherSymptoms(): CaseState {
+function atOtherSymptoms(scene: "trauma" | "non_trauma"): CaseState {
   return {
     ...beginInterview(
       setSceneType(
         setInformant(setSecondLanguage(createCase(), "en"), "self"),
-        "trauma",
+        scene,
       ),
     ),
     currentStep: "other_symptoms",
   };
 }
 
-describe("other symptoms (感)", () => {
-  it("is a single pass to summary with accompanying findings", () => {
-    let state = atOtherSymptoms();
-    state = toggleAccompanyingSymptom(state, "cold_sweat");
-    state = toggleAccompanyingSymptom(state, "shortness_of_breath");
-    state = toggleOtherBodyRegion(state, "chest");
+describe("secondary reasons (other_symptoms)", () => {
+  it("uses trauma sensation catalog without body map fields", () => {
+    let state = atOtherSymptoms("trauma");
+    expect(secondaryCatalogKind(state)).toBe("trauma");
+    expect(canCompleteOtherSymptoms(state)).toBe(false);
+
+    state = toggleSecondaryReason(state, "pain");
+    state = toggleSecondaryReason(state, "numbness");
+    expect(getOtherSymptomsDetail(state).reasonIds).toEqual([
+      "pain",
+      "numbness",
+    ]);
     expect(canCompleteOtherSymptoms(state)).toBe(true);
+
+    // Traffic / OHCA / non-trauma primary ids are rejected on trauma path.
+    const blocked = toggleSecondaryReason(state, "dyspnea");
+    expect(blocked).toBe(state);
 
     state = completeOtherSymptoms(state);
     expect(state.currentStep).toBe("summary");
-    expect(getOtherSymptomsDetail(state).symptomIds).toEqual([
-      "cold_sweat",
-      "shortness_of_breath",
-    ]);
-    // Completing again from summary is not a restart of 主訴
-    expect(state.currentStep).not.toBe("chief_complaint_1");
   });
 
-  it("supports 沒有其他 / unknown / skip", () => {
-    let none = toggleAccompanyingSymptom(atOtherSymptoms(), "none_other");
-    expect(getOtherSymptomsDetail(none).symptomIds).toEqual(["none_other"]);
-    none = completeOtherSymptoms(none);
-    expect(none.currentStep).toBe("summary");
+  it("uses non-trauma primary catalog minus OHCA", () => {
+    let state = atOtherSymptoms("non_trauma");
+    expect(secondaryCatalogKind(state)).toBe("non_trauma");
 
-    let unknown = markOtherSymptomsUnknown(atOtherSymptoms());
+    const ohca = toggleSecondaryReason(state, "ohca");
+    expect(ohca).toBe(state);
+
+    state = toggleSecondaryReason(state, "unconscious");
+    state = toggleSecondaryReason(state, "dyspnea");
+    expect(getOtherSymptomsDetail(state).reasonIds).toEqual([
+      "unconscious",
+      "dyspnea",
+    ]);
+    state = completeOtherSymptoms(state);
+    expect(state.currentStep).toBe("summary");
+  });
+
+  it("supports unknown / skip without selections", () => {
+    let unknown = markOtherSymptomsUnknown(atOtherSymptoms("trauma"));
     expect(unknown.answers.other_symptoms?.status).toBe("unknown");
     unknown = completeOtherSymptoms(unknown);
     expect(unknown.currentStep).toBe("summary");
 
-    let skipped = skipOtherSymptoms(atOtherSymptoms());
+    let skipped = skipOtherSymptoms(atOtherSymptoms("non_trauma"));
     skipped = completeOtherSymptoms(skipped);
     expect(skipped.currentStep).toBe("summary");
   });

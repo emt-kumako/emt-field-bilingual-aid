@@ -11,7 +11,7 @@ import {
 import { getHistoryCatalog, type HistoryStepId } from "../catalog/history-block.js";
 import { type BilingualText } from "../catalog/labels.js";
 import { getNonTraumaPrimary } from "../catalog/non-trauma-primary.js";
-import { getAccompanyingSymptom } from "../catalog/other-symptoms.js";
+import { getSecondaryReason } from "../catalog/secondary-reason.js";
 import { SUMMARY_COPY } from "../catalog/summary-copy.js";
 import {
   TRAUMA_OHCA_LABELS,
@@ -375,11 +375,7 @@ function formatOtherSymptoms(
   const detail = getOtherSymptomsDetail(state);
   const label = line(SUMMARY_COPY.sense, lang);
 
-  if (
-    blocked &&
-    detail.symptomIds.length === 0 &&
-    detail.bodyRegionIds.length === 0
-  ) {
+  if (blocked && detail.reasonIds.length === 0) {
     return {
       key: "other_symptoms",
       label,
@@ -389,25 +385,15 @@ function formatOtherSymptoms(
     };
   }
 
-  const partsFor = (L: Lang) => {
-    const parts: string[] = [];
-    if (detail.symptomIds.length) {
-      parts.push(
-        joinIds(detail.symptomIds, L, (id) => {
-          const labels = getAccompanyingSymptom(id)?.labels;
-          return labels ? pick(labels, L) : undefined;
-        }),
-      );
-    }
-    if (detail.bodyRegionIds.length) {
-      const regions = joinIds(detail.bodyRegionIds, L, (id) => {
-        const labels = getBodyRegion(id)?.labels;
-        return labels ? pick(labels, L) : undefined;
-      });
-      parts.push(`${pick(SUMMARY_COPY.otherBody, L)}：${regions}`);
-    }
-    return parts;
-  };
+  const partsFor = (L: Lang) =>
+    detail.reasonIds.length
+      ? [
+          joinIds(detail.reasonIds, L, (id) => {
+            const labels = getSecondaryReason(state.sceneType, id)?.labels;
+            return labels ? pick(labels, L) : undefined;
+          }),
+        ]
+      : [];
 
   const zhParts = partsFor("zh");
   const otherParts = partsFor(lang);

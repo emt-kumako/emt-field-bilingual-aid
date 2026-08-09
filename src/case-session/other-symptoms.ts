@@ -1,12 +1,7 @@
 import {
-  ACCOMPANYING_SYMPTOMS,
-  getAccompanyingSymptom,
-} from "../catalog/other-symptoms.js";
-import {
-  clearDrilldown,
-  toggleRegion,
-  toggleSubregion,
-} from "./body-selection.js";
+  getSecondaryReason,
+  secondaryReasonsForScene,
+} from "../catalog/secondary-reason.js";
 import { nextSelectedIds } from "./option-selection.js";
 import {
   type CaseState,
@@ -18,20 +13,17 @@ import {
 function readDetail(state: CaseState): OtherSymptomsDetail {
   const answer = state.answers.other_symptoms;
   if (!answer) return emptyOtherSymptomsDetail();
-  const d = answer.detail as Partial<OtherSymptomsDetail>;
+  const d = answer.detail as Partial<OtherSymptomsDetail> & {
+    /** Legacy accompanying-symptom field. */
+    symptomIds?: string[];
+  };
   return {
-    symptomIds: d.symptomIds ?? [],
-    bodyRegionIds: d.bodyRegionIds ?? [],
-    bodySubregionIds: d.bodySubregionIds ?? [],
-    drilldownRegionId: d.drilldownRegionId ?? null,
+    reasonIds: d.reasonIds ?? d.symptomIds ?? [],
   };
 }
 
 function writeDetail(state: CaseState, detail: OtherSymptomsDetail): CaseState {
-  const hasContent =
-    detail.symptomIds.length > 0 ||
-    detail.bodyRegionIds.length > 0 ||
-    detail.bodySubregionIds.length > 0;
+  const hasContent = detail.reasonIds.length > 0;
 
   return {
     ...state,
@@ -40,7 +32,7 @@ function writeDetail(state: CaseState, detail: OtherSymptomsDetail): CaseState {
       other_symptoms: {
         ...emptyStepAnswer(),
         status: hasContent ? "answered" : "empty",
-        optionIds: [...detail.symptomIds],
+        optionIds: [...detail.reasonIds],
         detail: { ...detail },
       },
     },
@@ -51,65 +43,31 @@ export function getOtherSymptomsDetail(state: CaseState): OtherSymptomsDetail {
   return readDetail(state);
 }
 
-export function toggleAccompanyingSymptom(
+export function secondaryCatalogKind(
   state: CaseState,
-  symptomId: string,
+): "trauma" | "non_trauma" | null {
+  if (state.sceneType === "trauma" || state.sceneType === "non_trauma") {
+    return state.sceneType;
+  }
+  return null;
+}
+
+export function toggleSecondaryReason(
+  state: CaseState,
+  reasonId: string,
 ): CaseState {
-  const option = getAccompanyingSymptom(symptomId);
-  if (!option) return state;
+  const catalog = secondaryReasonsForScene(state.sceneType);
+  if (!catalog.some((o) => o.id === reasonId)) return state;
+  if (!getSecondaryReason(state.sceneType, reasonId)) return state;
 
   const detail = readDetail(state);
-  const symptomIds = nextSelectedIds(
-    detail.symptomIds,
-    ACCOMPANYING_SYMPTOMS,
-    symptomId,
-  );
-
-  // Exclusive symptoms clear body selection (step policy — not Option selection).
-  if (option.exclusive) {
-    return writeDetail(state, {
-      symptomIds,
-      bodyRegionIds: [],
-      bodySubregionIds: [],
-      drilldownRegionId: null,
-    });
-  }
-
   return writeDetail(state, {
-    ...detail,
-    symptomIds,
+    reasonIds: nextSelectedIds(detail.reasonIds, catalog, reasonId, "multi"),
   });
 }
 
-export function toggleOtherBodyRegion(
-  state: CaseState,
-  regionId: string,
-): CaseState {
-  const detail = readDetail(state);
-  // Exclusive accompanying symptom locks the body map (step policy).
-  if (detail.symptomIds.some((id) => getAccompanyingSymptom(id)?.exclusive)) {
-    return state;
-  }
-  const next = toggleRegion(detail, regionId);
-  if (!next) return state;
-  return writeDetail(state, { ...detail, ...next });
-}
-
-export function toggleOtherBodySubregion(
-  state: CaseState,
-  subregionId: string,
-): CaseState {
-  const detail = readDetail(state);
-  return writeDetail(state, {
-    ...detail,
-    ...toggleSubregion(detail, subregionId),
-  });
-}
-
-export function clearOtherBodyDrilldown(state: CaseState): CaseState {
-  const detail = readDetail(state);
-  return writeDetail(state, { ...detail, ...clearDrilldown(detail) });
-}
+/** @deprecated Use toggleSecondaryReason — kept for older call sites during rename. */
+export const toggleAccompanyingSymptom = toggleSecondaryReason;
 
 export function markOtherSymptomsUnknown(state: CaseState): CaseState {
   return {
@@ -144,20 +102,18 @@ export function canCompleteOtherSymptoms(state: CaseState): boolean {
   if (!answer) return false;
   if (answer.status === "unknown" || answer.status === "skipped") return true;
   if (answer.status !== "answered") return false;
-  const detail = readDetail(state);
-  return detail.symptomIds.length > 0 || detail.bodyRegionIds.length > 0;
+  return readDetail(state).reasonIds.length > 0;
 }
 
 /** Single pass only — advances to summary, never restarts 主訴. */
 export function completeOtherSymptoms(state: CaseState): CaseState {
   if (!canCompleteOtherSymptoms(state)) return state;
-  const detail = { ...readDetail(state), drilldownRegionId: null };
   const status = state.answers.other_symptoms?.status;
   if (status === "unknown" || status === "skipped") {
     return { ...state, currentStep: "summary", returnToSummary: false };
   }
   return {
-    ...writeDetail(state, detail),
+    ...writeDetail(state, readDetail(state)),
     currentStep: "summary",
     returnToSummary: false,
   };

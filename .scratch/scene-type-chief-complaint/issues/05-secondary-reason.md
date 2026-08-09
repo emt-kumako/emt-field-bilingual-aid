@@ -4,10 +4,16 @@
 
 **Blocked by:** 02 — 非創傷主要原因；03 — 創傷機轉 → 身體圖
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 次要步驟文案為「還有其他感覺不舒服的地方」（或共識等同用语）
-- [ ] 非創傷次要目錄＝主因扁平清單扣 OHCA；多選可跳過
-- [ ] 創傷次要＝創傷感受精簡清單；無身體圖／交通／傷類重跑
-- [ ] locale completeness 通過
-- [ ] CaseSession 測試覆蓋兩條 Scene type 的次要行為
+- [x] 次要步驟文案為「還有其他感覺不舒服的地方」（或共識等同用语）
+- [x] 非創傷次要目錄＝主因扁平清單扣 OHCA；多選可跳過
+- [x] 創傷次要＝創傷感受精簡清單；無身體圖／交通／傷類重跑
+- [x] locale completeness 通過
+- [x] CaseSession 測試覆蓋兩條 Scene type 的次要行為
+
+## Answer
+
+- Step id 仍為 `other_symptoms`；文案改為「還有其他感覺不舒服的地方」；detail 改存 `reasonIds`。
+- 非創傷：`NON_TRAUMA_SECONDARY_REASONS`（主因扣 OHCA）；創傷：`TRAUMA_SECONDARY_SENSATIONS`；slot `secondaryReason`；gate `need_secondary_reason`。
+- 移除次要步驟身體圖；Vitest 54 passed。

@@ -385,6 +385,96 @@ describe("CaseSession apply / viewFacts", () => {
     expect(state.currentStep).toBe("chest_opqrst");
   });
 
+  it("branches secondary reasons by Scene type without body map", () => {
+    let trauma = createCase();
+    trauma = apply(trauma, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    trauma = apply(trauma, { type: "nav", move: "next" });
+    trauma = apply(trauma, { type: "edit", slot: "informant", value: "self" });
+    trauma = apply(trauma, {
+      type: "edit",
+      slot: "sceneType",
+      value: "trauma",
+    });
+    trauma = { ...trauma, currentStep: "other_symptoms" };
+
+    expect(viewFacts(trauma).screen).toMatchObject({
+      step: "other_symptoms",
+      reasonIds: [],
+      secondaryCatalog: "trauma",
+    });
+    expect(viewFacts(trauma).gate.reason).toBe("need_secondary_reason");
+
+    trauma = apply(trauma, {
+      type: "edit",
+      slot: "secondaryReason",
+      value: "pain",
+    });
+    trauma = apply(trauma, {
+      type: "edit",
+      slot: "secondaryReason",
+      value: "weakness",
+    });
+    expect(viewFacts(trauma).screen).toMatchObject({
+      reasonIds: ["pain", "weakness"],
+    });
+    expect(viewFacts(trauma).gate.nextEnabled).toBe(true);
+    const rejected = apply(trauma, {
+      type: "edit",
+      slot: "secondaryReason",
+      value: "dyspnea",
+    });
+    expect(rejected).toEqual(trauma);
+
+    let nonTrauma = createCase();
+    nonTrauma = apply(nonTrauma, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    nonTrauma = apply(nonTrauma, { type: "nav", move: "next" });
+    nonTrauma = apply(nonTrauma, {
+      type: "edit",
+      slot: "informant",
+      value: "self",
+    });
+    nonTrauma = apply(nonTrauma, {
+      type: "edit",
+      slot: "sceneType",
+      value: "non_trauma",
+    });
+    nonTrauma = { ...nonTrauma, currentStep: "other_symptoms" };
+
+    expect(viewFacts(nonTrauma).screen).toMatchObject({
+      secondaryCatalog: "non_trauma",
+    });
+    const ohcaRejected = apply(nonTrauma, {
+      type: "edit",
+      slot: "secondaryReason",
+      value: "ohca",
+    });
+    expect(ohcaRejected).toEqual(nonTrauma);
+
+    nonTrauma = apply(nonTrauma, {
+      type: "edit",
+      slot: "secondaryReason",
+      value: "fever",
+    });
+    nonTrauma = apply(nonTrauma, {
+      type: "edit",
+      slot: "secondaryReason",
+      value: "dyspnea",
+    });
+    expect(viewFacts(nonTrauma).screen).toMatchObject({
+      reasonIds: ["fever", "dyspnea"],
+    });
+    nonTrauma = apply(nonTrauma, { type: "nav", move: "next" });
+    expect(nonTrauma.currentStep).toBe("summary");
+  });
+
   it("allows OPQRST unknown/skip and time-unknown to satisfy T", () => {
     let state = createCase();
     state = apply(state, {

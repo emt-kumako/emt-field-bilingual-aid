@@ -40,6 +40,14 @@ _Avoid_: Full OPQRST for every complaint, free-text history
 Interview step for how long the problem has lasted (numeric duration, buckets, period, EMT refine). Step id: `chief_complaint_duration`. May be filled by the OPQRST chest page T fields instead of visiting this step.
 _Avoid_: Treating duration as part of “step 2”
 
+**Primary reason**:
+First discomfort step after Start under Scene type:「哪裡不舒服」— non-trauma flat catalog or trauma mechanism → body map. Stored on `chief_complaint_1`.
+_Avoid_: Generic chief-complaint type list as the long-term model
+
+**Secondary reason**:
+Final other-discomfort step「還有其他感覺不舒服的地方」(step id still `other_symptoms`): multi-select, skippable. Non-trauma = primary catalog minus OHCA; trauma = short sensation list only (no second body map / traffic / injury round).
+_Avoid_: Accompanying「感」scan with body map, replaying trauma mechanism
+
 **Option selection**:
 The shared rule for how tapping an interview option changes the selected id set (single-select, exclusive options, mutex groups). Module entry: `nextSelectedIds`. Does not own body-lock or drilldown policy.
 _Avoid_: Toggle helper, checkbox logic

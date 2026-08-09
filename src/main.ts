@@ -35,7 +35,7 @@ import {
   type HistoryStepId,
 } from "./catalog/history-block.js";
 import { type BilingualText } from "./catalog/labels.js";
-import { ACCOMPANYING_SYMPTOMS } from "./catalog/other-symptoms.js";
+import { secondaryReasonsForScene } from "./catalog/secondary-reason.js";
 import { UI_COPY } from "./catalog/ui-copy.js";
 import {
   apply,
@@ -46,7 +46,6 @@ import {
   getChiefComplaintDurationDetail,
   getListNote,
   getListOptionIds,
-  getOtherSymptomsDetail,
   getPrimaryNote,
   listStepNeedsNote,
   needsBodyLocation,
@@ -139,8 +138,8 @@ const GATE_COPY: Record<GateReason, string> = {
   need_duration:
     "請輸入多久了（數字＋單位）或時段，或按「不知道／無法回答／跳過」",
   need_list_selection: "請選擇至少一項，或按「不知道／無法回答／跳過」",
-  need_other_symptom_or_body:
-    "請選擇伴隨症狀或身體部位，或按「不知道／無法回答／跳過」",
+  need_secondary_reason:
+    "請選擇次要原因，或按「不知道／無法回答／跳過」",
 };
 
 function softGateNote(): string {
@@ -258,16 +257,8 @@ function toIntent(
       return id && isHistoryStep(id)
         ? { type: "nav", move: "goto", step: id }
         : null;
-    case "sense-symptom":
-      return id
-        ? { type: "edit", slot: "accompanyingSymptom", value: id }
-        : null;
-    case "sense-body":
-      return id ? { type: "edit", slot: "otherBodyRegion", value: id } : null;
-    case "sense-sub":
-      return id ? { type: "edit", slot: "otherBodySubregion", value: id } : null;
-    case "sense-drill-done":
-      return { type: "edit", slot: "otherBodyDrilldown" };
+    case "sense-reason":
+      return id ? { type: "edit", slot: "secondaryReason", value: id } : null;
     case "summary-edit":
       return id && isInterviewStep(id)
         ? { type: "nav", move: "edit", step: id }
@@ -1323,35 +1314,19 @@ function renderBodyMap(
 }
 
 function renderOtherSymptoms(): void {
-  const detail = getOtherSymptomsDetail(state);
-  const exclusive = detail.symptomIds.some(
-    (id) => ACCOMPANYING_SYMPTOMS.find((s) => s.id === id)?.exclusive,
-  );
-  const drillRegion = detail.drilldownRegionId
-    ? getBodyRegion(detail.drilldownRegionId)
-    : undefined;
+  const screen = viewFacts(state).screen;
+  if (screen.step !== "other_symptoms") return;
 
-  if (drillRegion && drillRegion.subregions.length > 0) {
-    paintBodyDrilldown({
-      eyebrow: "感 · 二次掃描",
-      region: drillRegion,
-      selectedSubIds: detail.bodySubregionIds,
-      subAction: "sense-sub",
-      doneAction: "sense-drill-done",
-      leadZhSuffix: "更精確位置",
-      chromeExtra: returnSummaryBar(),
-    });
-    return;
-  }
-
-  const symptomButtons = ACCOMPANYING_SYMPTOMS.map((opt) => {
-    const pressed = detail.symptomIds.includes(opt.id);
-    return `
-      <button type="button" class="option" data-action="sense-symptom" data-id="${opt.id}" aria-pressed="${pressed}">
+  const catalog = secondaryReasonsForScene(state.sceneType);
+  const reasonButtons = catalog
+    .map((opt) => {
+      const pressed = screen.reasonIds.includes(opt.id);
+      return `
+      <button type="button" class="option" data-action="sense-reason" data-id="${opt.id}" aria-pressed="${pressed}">
         ${bilingualButtonLabel(opt.labels)}
-      </button>
-    `;
-  }).join("");
+      </button>`;
+    })
+    .join("");
 
   const status = state.answers.other_symptoms?.status;
   const statusNote =
@@ -1363,28 +1338,21 @@ function renderOtherSymptoms(): void {
 
   const title = bilingualHeading(UI_COPY.senseTitle);
   const lead = bilingualInline(UI_COPY.senseLead, secondLang(), INTERVIEW_PRIMACY);
-  const symptoms = bilingualSectionTitle(UI_COPY.senseSymptoms);
-  const body = bilingualSectionTitle(UI_COPY.senseBody);
+  const eyebrow =
+    screen.secondaryCatalog === "trauma" ? "次要原因 · 創傷感受" : "次要原因";
 
   getView().innerHTML = screenLayout({
     header: `
       <header class="step-header">
-        <p class="eyebrow">感</p>
+        <p class="eyebrow">${eyebrow}</p>
         <h1>${title.title}</h1>
         <p class="lead">${title.lead} · ${lead.primary}</p>
       </header>
     `,
     body: `
-      <div class="split-panels">
-        <section class="section grow">
-          <h2>${symptoms}</h2>
-          <div class="option-grid cols-2 fill-grid">${symptomButtons}</div>
-        </section>
-        <section class="section grow ${exclusive ? "is-disabled" : ""}">
-          <h2>${body}</h2>
-          ${renderBodyMap(detail.bodyRegionIds, "sense-body")}
-        </section>
-      </div>
+      <section class="section grow">
+        <div class="option-grid cols-2 fill-grid">${reasonButtons}</div>
+      </section>
       ${statusNote}
       ${softGateNote()}
     `,
