@@ -1,9 +1,15 @@
 import {
   BODY_REGIONS,
-  COMPLAINT_TYPES,
   getBodyRegion,
 } from "./catalog/chief-complaint-1.js";
 import { NON_TRAUMA_PRIMARY_REASONS } from "./catalog/non-trauma-primary.js";
+import {
+  TRAUMA_INJURY_OPTIONS,
+  TRAUMA_OHCA_LABELS,
+  TRAUMA_TRAFFIC_OPTIONS,
+  TRAUMA_VEHICLE_OPTIONS,
+  formatMetersWithImperial,
+} from "./catalog/trauma-primary.js";
 import { visibleQualityOptions } from "./catalog/chief-complaint-quality.js";
 import {
   TIME_BUCKETS,
@@ -34,7 +40,9 @@ import {
   needsBodyLocation,
   primaryOpensNote,
   showsPainScale,
+  traumaAsksFallHeight,
   usesNonTraumaPrimary,
+  usesTraumaPrimary,
   viewFacts,
   type CaseState,
   type GateReason,
@@ -110,6 +118,8 @@ const GATE_COPY: Record<GateReason, string> = {
   need_informant: "請選擇正在回答問題的是誰",
   need_scene_type: "請選擇現場為創傷或非創傷",
   need_complaint_type: "請選擇主訴，或按「不知道／無法回答／跳過」",
+  need_trauma_mechanism: "請選擇因／非因交通事故與對應傷類或車種",
+  need_trauma_vehicle: "請選擇車輛類型（汽車／機車／腳踏車／行人）",
   need_body_location: "此主訴需點選身體部位後才能下一步",
   need_quality_or_pain:
     "請選擇怎麼不舒服（或「同哪裡不舒服」／疼痛指數），或按「不知道／無法回答／跳過」",
@@ -175,6 +185,16 @@ function toIntent(
       return id ? { type: "edit", slot: "complaintType", value: id } : null;
     case "cc1-note":
       return { type: "edit", slot: "primaryNote", value: inputValue ?? "" };
+    case "trauma-ohca":
+      return { type: "edit", slot: "traumaOhca" };
+    case "trauma-traffic":
+      return id ? { type: "edit", slot: "traumaTraffic", value: id } : null;
+    case "trauma-vehicle":
+      return id ? { type: "edit", slot: "traumaVehicle", value: id } : null;
+    case "trauma-injury":
+      return id ? { type: "edit", slot: "traumaInjury", value: id } : null;
+    case "trauma-fall-height":
+      return { type: "edit", slot: "traumaFallHeight", value: inputValue ?? "" };
     case "cc1-body":
       return id ? { type: "edit", slot: "bodyRegion", value: id } : null;
     case "cc1-sub":
@@ -591,10 +611,156 @@ function isInterviewStep(step: string): step is InterviewStep {
   return (INTERVIEW_STEPS as readonly string[]).includes(step);
 }
 
+function cc1StatusNote(): string {
+  const status = state.answers.chief_complaint_1?.status;
+  if (status === "unknown") return `<p class="status-note">已標示：不知道</p>`;
+  if (status === "skipped") return `<p class="status-note">已標示：跳過</p>`;
+  return "";
+}
+
+function cc1ActionBar(): string {
+  return `
+    <div class="actions">
+      <button type="button" class="secondary" data-action="cc1-back">上一步</button>
+      <button type="button" class="ghost" data-action="cc1-unknown">不知道</button>
+      <button type="button" class="ghost" data-action="cc1-unknown">無法回答</button>
+      <button type="button" class="ghost" data-action="cc1-skip">跳過</button>
+      <button type="button" class="primary" data-action="cc1-next" ${nextDisabledAttr()}>下一步</button>
+    </div>
+    ${returnSummaryBar()}
+  `;
+}
+
 function renderChiefComplaint1(): void {
   const detail = getChiefComplaint1Detail(state);
+  const title = bilingualHeading(UI_COPY.cc1Title);
+
+  if (usesTraumaPrimary(state)) {
+    if (detail.traumaStage === "body") {
+      const drillRegion = detail.drilldownRegionId
+        ? getBodyRegion(detail.drilldownRegionId)
+        : undefined;
+      if (drillRegion && drillRegion.subregions.length > 0) {
+        paintBodyDrilldown({
+          eyebrow: "主訴 · 身體部位",
+          titleSuffix: " — finer location",
+          region: drillRegion,
+          selectedSubIds: detail.bodySubregionIds,
+          subAction: "cc1-sub",
+          doneAction: "cc1-drill-done",
+          leadZhSuffix: "更精確位置（選填）",
+        });
+        return;
+      }
+      const bodyTitle = bilingualSectionTitle(UI_COPY.traumaBodyTitle);
+      getView().innerHTML = screenLayout({
+        header: `
+          <header class="step-header">
+            <p class="eyebrow">主訴 · 身體部位</p>
+            <h1>${title.title}</h1>
+            <p class="lead">${title.lead}</p>
+          </header>
+        `,
+        body: `
+          <section class="section grow">
+            <h2>${bodyTitle}</h2>
+            ${renderBodyMap(detail.bodyRegionIds, "cc1-body")}
+          </section>
+          ${cc1StatusNote()}
+          ${softGateNote()}
+        `,
+        actions: cc1ActionBar(),
+      });
+      return;
+    }
+
+    const mechTitle = bilingualSectionTitle(UI_COPY.traumaMechanismTitle);
+    const ohcaPressed = detail.traumaOhca;
+    const trafficButtons = TRAUMA_TRAFFIC_OPTIONS.map((opt) => {
+      const pressed = detail.traumaTraffic === opt.id;
+      return `
+        <button type="button" class="option" data-action="trauma-traffic" data-id="${opt.id}" aria-pressed="${pressed}">
+          ${bilingualButtonLabel(opt.labels)}
+        </button>`;
+    }).join("");
+    const vehicleBlock =
+      detail.traumaTraffic === "traffic"
+        ? `
+      <section class="section">
+        <h2>${bilingualSectionTitle(UI_COPY.traumaVehicleTitle)}</h2>
+        <div class="option-grid cols-2">${TRAUMA_VEHICLE_OPTIONS.map((opt) => {
+          const pressed = detail.traumaVehicleId === opt.id;
+          return `
+            <button type="button" class="option" data-action="trauma-vehicle" data-id="${opt.id}" aria-pressed="${pressed}">
+              ${bilingualButtonLabel(opt.labels)}
+            </button>`;
+        }).join("")}</div>
+      </section>`
+        : "";
+    const injuryBlock =
+      detail.traumaTraffic === "non_traffic"
+        ? `
+      <section class="section grow">
+        <h2>${bilingualSectionTitle(UI_COPY.traumaInjuryTitle)}</h2>
+        <div class="option-grid cols-2">${TRAUMA_INJURY_OPTIONS.map((opt) => {
+          const pressed = detail.traumaInjuryTypeId === opt.id;
+          return `
+            <button type="button" class="option" data-action="trauma-injury" data-id="${opt.id}" aria-pressed="${pressed}">
+              ${bilingualButtonLabel(opt.labels)}
+            </button>`;
+        }).join("")}</div>
+        ${
+          traumaAsksFallHeight(state)
+            ? `
+        <label class="field">
+          <span class="field-label">${bilingualSectionTitle(UI_COPY.traumaFallHeight)}</span>
+          <input type="number" min="0" step="0.1" inputmode="decimal" data-action="trauma-fall-height" value="${
+            detail.traumaFallHeightMeters ?? ""
+          }" />
+          ${
+            detail.traumaFallHeightMeters != null
+              ? `<p class="lead">${escapeHtml(
+                  formatMetersWithImperial(detail.traumaFallHeightMeters, "zh"),
+                )} · ${escapeHtml(
+                  formatMetersWithImperial(detail.traumaFallHeightMeters, "en"),
+                )}</p>`
+              : ""
+          }
+        </label>`
+            : ""
+        }
+      </section>`
+        : "";
+
+    getView().innerHTML = screenLayout({
+      header: `
+        <header class="step-header">
+          <p class="eyebrow">主訴 · 機轉</p>
+          <h1>${title.title}</h1>
+          <p class="lead">${title.lead}</p>
+        </header>
+      `,
+      body: `
+        <section class="section">
+          <button type="button" class="option" data-action="trauma-ohca" aria-pressed="${ohcaPressed}">
+            ${bilingualButtonLabel(TRAUMA_OHCA_LABELS)}
+          </button>
+        </section>
+        <section class="section">
+          <h2>${mechTitle}</h2>
+          <div class="option-grid cols-2">${trafficButtons}</div>
+        </section>
+        ${vehicleBlock}
+        ${injuryBlock}
+        ${cc1StatusNote()}
+        ${softGateNote()}
+      `,
+      actions: cc1ActionBar(),
+    });
+    return;
+  }
+
   const nonTrauma = usesNonTraumaPrimary(state);
-  const showBody = needsBodyLocation(state);
   const drillRegion = detail.drilldownRegionId
     ? getBodyRegion(detail.drilldownRegionId)
     : undefined;
@@ -612,7 +778,7 @@ function renderChiefComplaint1(): void {
     return;
   }
 
-  const catalog = nonTrauma ? NON_TRAUMA_PRIMARY_REASONS : COMPLAINT_TYPES;
+  const catalog = NON_TRAUMA_PRIMARY_REASONS;
   const complaintButtons = catalog.map((opt) => {
     const pressed = detail.complaintTypeIds.includes(opt.id);
     return `
@@ -644,47 +810,7 @@ function renderChiefComplaint1(): void {
       </section>`
       : "";
 
-  const status = state.answers.chief_complaint_1?.status;
-  const statusNote =
-    status === "unknown"
-      ? `<p class="status-note">已標示：不知道</p>`
-      : status === "skipped"
-        ? `<p class="status-note">已標示：跳過</p>`
-        : "";
-
-  const title = bilingualHeading(UI_COPY.cc1Title);
   const what = bilingualSectionTitle(UI_COPY.cc1What);
-  const where = bilingualSectionTitle(UI_COPY.cc1Where);
-  const whereOpt = bilingualInline(
-    UI_COPY.cc1WhereOptional,
-    secondLang(),
-    INTERVIEW_PRIMACY,
-  );
-
-  const body = nonTrauma
-    ? `
-      <section class="section grow">
-        <h2>${what}</h2>
-        <div class="option-grid cols-2 fill-grid">${complaintButtons}</div>
-      </section>
-      ${noteBlock}
-      ${statusNote}
-      ${softGateNote()}
-    `
-    : `
-      <div class="split-panels">
-        <section class="section grow">
-          <h2>${what}</h2>
-          <div class="option-grid cols-2 fill-grid">${complaintButtons}</div>
-        </section>
-        <section class="section grow">
-          <h2>${where}${showBody ? "" : ` <span class="sub">${whereOpt.primary} · ${whereOpt.secondary}</span>`}</h2>
-          ${renderBodyMap(detail.bodyRegionIds, "cc1-body")}
-        </section>
-      </div>
-      ${statusNote}
-      ${softGateNote()}
-    `;
 
   getView().innerHTML = screenLayout({
     header: `
@@ -694,17 +820,16 @@ function renderChiefComplaint1(): void {
         <p class="lead">${title.lead}</p>
       </header>
     `,
-    body,
-    actions: `
-      <div class="actions">
-        <button type="button" class="secondary" data-action="cc1-back">上一步</button>
-        <button type="button" class="ghost" data-action="cc1-unknown">不知道</button>
-        <button type="button" class="ghost" data-action="cc1-unknown">無法回答</button>
-        <button type="button" class="ghost" data-action="cc1-skip">跳過</button>
-        <button type="button" class="primary" data-action="cc1-next" ${nextDisabledAttr()}>下一步</button>
-      </div>
-      ${returnSummaryBar()}
+    body: `
+      <section class="section grow">
+        <h2>${what}</h2>
+        <div class="option-grid cols-2 fill-grid">${complaintButtons}</div>
+      </section>
+      ${noteBlock}
+      ${cc1StatusNote()}
+      ${softGateNote()}
     `,
+    actions: cc1ActionBar(),
   });
 }
 

@@ -17,6 +17,12 @@ import { SUMMARY_COPY } from "./summary-copy.js";
 import { UI_COPY } from "./ui-copy.js";
 import { NON_TRAUMA_PRIMARY_REASONS } from "./non-trauma-primary.js";
 import {
+  TRAUMA_INJURY_OPTIONS,
+  TRAUMA_OHCA_LABELS,
+  TRAUMA_TRAFFIC_OPTIONS,
+  TRAUMA_VEHICLE_OPTIONS,
+} from "./trauma-primary.js";
+import {
   INFORMANT_OPTIONS,
   SCENE_TYPE_OPTIONS,
 } from "../content/start-labels.js";
@@ -72,6 +78,16 @@ describe("locale packs", () => {
     }
     for (const opt of NON_TRAUMA_PRIMARY_REASONS) {
       assertComplete(opt.labels, `nonTraumaPrimary:${opt.id}`);
+    }
+    assertComplete(TRAUMA_OHCA_LABELS, "trauma:ohca");
+    for (const opt of TRAUMA_TRAFFIC_OPTIONS) {
+      assertComplete(opt.labels, `traumaTraffic:${opt.id}`);
+    }
+    for (const opt of TRAUMA_VEHICLE_OPTIONS) {
+      assertComplete(opt.labels, `traumaVehicle:${opt.id}`);
+    }
+    for (const opt of TRAUMA_INJURY_OPTIONS) {
+      assertComplete(opt.labels, `traumaInjury:${opt.id}`);
     }
   });
 

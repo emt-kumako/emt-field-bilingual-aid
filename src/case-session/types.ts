@@ -25,6 +25,8 @@ export type GateReason =
   | "need_informant"
   | "need_scene_type"
   | "need_complaint_type"
+  | "need_trauma_mechanism"
+  | "need_trauma_vehicle"
   | "need_body_location"
   | "need_quality_or_pain"
   | "need_duration"
@@ -47,6 +49,9 @@ export type InterviewStep =
 
 export type AnswerStatus = "answered" | "unknown" | "skipped" | "empty";
 
+export type TraumaTrafficRelated = "traffic" | "non_traffic";
+export type TraumaPrimaryStage = "mechanism" | "body";
+
 /** 主訴 step 1 payload stored in answers.chief_complaint_1.detail */
 export type ChiefComplaint1Detail = {
   complaintTypeIds: string[];
@@ -54,6 +59,14 @@ export type ChiefComplaint1Detail = {
   bodySubregionIds: string[];
   /** When set, UI is on optional fine location for this coarse region. */
   drilldownRegionId: string | null;
+  /** Trauma path: OHCA toggle (mechanism still required). */
+  traumaOhca: boolean;
+  traumaTraffic: TraumaTrafficRelated | null;
+  traumaVehicleId: string | null;
+  traumaInjuryTypeId: string | null;
+  /** Canonical meters when injury is fall-from-height. */
+  traumaFallHeightMeters: number | null;
+  traumaStage: TraumaPrimaryStage;
 };
 
 export type StepAnswer = {
@@ -72,6 +85,12 @@ export function emptyChiefComplaint1Detail(): ChiefComplaint1Detail {
     bodyRegionIds: [],
     bodySubregionIds: [],
     drilldownRegionId: null,
+    traumaOhca: false,
+    traumaTraffic: null,
+    traumaVehicleId: null,
+    traumaInjuryTypeId: null,
+    traumaFallHeightMeters: null,
+    traumaStage: "mechanism",
   };
 }
 

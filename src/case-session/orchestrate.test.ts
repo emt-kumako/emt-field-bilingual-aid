@@ -111,7 +111,7 @@ describe("CaseSession apply / viewFacts", () => {
     expect(state.currentStep).toBe("start");
   });
 
-  it("routes click and input through the same apply path", () => {
+  it("routes trauma mechanism then body through apply", () => {
     let state = createCase();
     state = apply(state, {
       type: "edit",
@@ -123,14 +123,29 @@ describe("CaseSession apply / viewFacts", () => {
     state = apply(state, { type: "edit", slot: "sceneType", value: "trauma" });
     state = apply(state, { type: "nav", move: "next" });
     expect(state.currentStep).toBe("chief_complaint_1");
+    expect(viewFacts(state).screen).toMatchObject({
+      usesTraumaPrimary: true,
+      traumaStage: "mechanism",
+    });
+    expect(viewFacts(state).gate.reason).toBe("need_trauma_mechanism");
 
+    state = apply(state, { type: "edit", slot: "traumaOhca" });
     state = apply(state, {
       type: "edit",
-      slot: "complaintType",
-      value: "pain",
+      slot: "traumaTraffic",
+      value: "traffic",
     });
-    state = apply(state, { type: "edit", slot: "bodyRegion", value: "chest" });
+    expect(viewFacts(state).gate.reason).toBe("need_trauma_vehicle");
+    state = apply(state, {
+      type: "edit",
+      slot: "traumaVehicle",
+      value: "motorcycle",
+    });
     expect(viewFacts(state).gate.nextEnabled).toBe(true);
+    state = apply(state, { type: "nav", move: "next" });
+    expect(viewFacts(state).screen).toMatchObject({ traumaStage: "body" });
+
+    state = apply(state, { type: "edit", slot: "bodyRegion", value: "chest" });
     state = apply(state, { type: "nav", move: "next" });
     expect(state.currentStep).toBe("chief_complaint_quality");
 
@@ -147,6 +162,40 @@ describe("CaseSession apply / viewFacts", () => {
       timeAmount: 30,
       timeUnit: "minutes",
     });
+  });
+
+  it("covers non-traffic trauma with fall height", () => {
+    let state = createCase();
+    state = apply(state, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, { type: "edit", slot: "informant", value: "self" });
+    state = apply(state, { type: "edit", slot: "sceneType", value: "trauma" });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, {
+      type: "edit",
+      slot: "traumaTraffic",
+      value: "non_traffic",
+    });
+    state = apply(state, {
+      type: "edit",
+      slot: "traumaInjury",
+      value: "fall_from_height",
+    });
+    state = apply(state, {
+      type: "edit",
+      slot: "traumaFallHeight",
+      value: "2",
+    });
+    expect(viewFacts(state).screen).toMatchObject({
+      traumaAsksFallHeight: true,
+      traumaFallHeightMeters: 2,
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    expect(viewFacts(state).screen).toMatchObject({ traumaStage: "body" });
   });
 
   it("lands on informant Start phase when backing from chief complaint 1", () => {

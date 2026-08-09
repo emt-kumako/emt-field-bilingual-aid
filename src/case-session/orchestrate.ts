@@ -16,12 +16,19 @@ import {
   markChiefComplaint1Unknown,
   needsBodyLocation,
   primaryOpensNote,
+  setPrimaryNote,
+  setTraumaFallHeightMeters,
+  setTraumaInjuryType,
+  setTraumaTraffic,
+  setTraumaVehicle,
   skipChiefComplaint1,
   toggleBodyRegion,
   toggleBodySubregion,
-  setPrimaryNote,
   toggleComplaintType,
+  toggleTraumaOhca,
+  traumaAsksFallHeight,
   usesNonTraumaPrimary,
+  usesTraumaPrimary,
 } from "./chief-complaint-1.js";
 import {
   canCompleteChiefComplaintQuality,
@@ -95,6 +102,11 @@ export type Slot =
   | "sceneType"
   | "complaintType"
   | "primaryNote"
+  | "traumaOhca"
+  | "traumaTraffic"
+  | "traumaVehicle"
+  | "traumaInjury"
+  | "traumaFallHeight"
   | "bodyRegion"
   | "bodySubregion"
   | "bodyDrilldown"
@@ -142,8 +154,16 @@ export type ScreenFacts =
       drilldownRegionId: string | null;
       needsBodyLocation: boolean;
       usesNonTraumaPrimary: boolean;
+      usesTraumaPrimary: boolean;
       primaryNote: string;
       primaryOpensNote: boolean;
+      traumaOhca: boolean;
+      traumaTraffic: "traffic" | "non_traffic" | null;
+      traumaVehicleId: string | null;
+      traumaInjuryTypeId: string | null;
+      traumaFallHeightMeters: number | null;
+      traumaAsksFallHeight: boolean;
+      traumaStage: "mechanism" | "body";
     }
   | {
       step: "chief_complaint_quality";
@@ -215,6 +235,20 @@ function applyEdit(state: CaseState, slot: Slot, value?: string): CaseState {
       return toggleComplaintType(state, value);
     case "primaryNote":
       return setPrimaryNote(state, value ?? "");
+    case "traumaOhca":
+      return toggleTraumaOhca(state);
+    case "traumaTraffic":
+      if (!value) return state;
+      if (value !== "traffic" && value !== "non_traffic") return state;
+      return setTraumaTraffic(state, value);
+    case "traumaVehicle":
+      if (!value) return state;
+      return setTraumaVehicle(state, value);
+    case "traumaInjury":
+      if (!value) return state;
+      return setTraumaInjuryType(state, value);
+    case "traumaFallHeight":
+      return setTraumaFallHeightMeters(state, value ?? "");
     case "bodyRegion":
       if (!value) return state;
       return toggleBodyRegion(state, value);
@@ -427,6 +461,24 @@ function gateFor(state: CaseState): GateFacts {
         return { reason: null, nextEnabled: true };
       }
       const detail = getChiefComplaint1Detail(state);
+      if (usesTraumaPrimary(state)) {
+        if (detail.traumaStage === "mechanism") {
+          if (!detail.traumaTraffic) {
+            return { reason: "need_trauma_mechanism", nextEnabled: false };
+          }
+          if (detail.traumaTraffic === "traffic" && !detail.traumaVehicleId) {
+            return { reason: "need_trauma_vehicle", nextEnabled: false };
+          }
+          if (
+            detail.traumaTraffic === "non_traffic" &&
+            !detail.traumaInjuryTypeId
+          ) {
+            return { reason: "need_trauma_mechanism", nextEnabled: false };
+          }
+          return { reason: "need_trauma_mechanism", nextEnabled: false };
+        }
+        return { reason: "need_body_location", nextEnabled: false };
+      }
       if (detail.complaintTypeIds.length === 0) {
         return { reason: "need_complaint_type", nextEnabled: false };
       }
@@ -486,8 +538,16 @@ function screenFor(state: CaseState): ScreenFacts {
         drilldownRegionId: d.drilldownRegionId,
         needsBodyLocation: needsBodyLocation(state),
         usesNonTraumaPrimary: usesNonTraumaPrimary(state),
+        usesTraumaPrimary: usesTraumaPrimary(state),
         primaryNote: getPrimaryNote(state),
         primaryOpensNote: primaryOpensNote(state),
+        traumaOhca: d.traumaOhca,
+        traumaTraffic: d.traumaTraffic,
+        traumaVehicleId: d.traumaVehicleId,
+        traumaInjuryTypeId: d.traumaInjuryTypeId,
+        traumaFallHeightMeters: d.traumaFallHeightMeters,
+        traumaAsksFallHeight: traumaAsksFallHeight(state),
+        traumaStage: d.traumaStage,
       };
     }
     case "chief_complaint_quality": {

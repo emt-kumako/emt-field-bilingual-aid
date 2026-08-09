@@ -9,8 +9,9 @@ import {
 } from "./case-session.js";
 import {
   completeChiefComplaint1,
+  setTraumaTraffic,
+  setTraumaVehicle,
   toggleBodyRegion,
-  toggleComplaintType,
 } from "./chief-complaint-1.js";
 import {
   completeChiefComplaintDuration,
@@ -18,7 +19,6 @@ import {
 } from "./chief-complaint-duration.js";
 import {
   completeChiefComplaintQuality,
-  setPainScore,
   toggleQuality,
 } from "./chief-complaint-quality.js";
 import {
@@ -47,11 +47,12 @@ function finishedCase() {
     ),
   );
   state = setInformant(state, "self");
-  state = toggleComplaintType(state, "pain");
+  state = setTraumaTraffic(state, "traffic");
+  state = setTraumaVehicle(state, "motorcycle");
+  state = completeChiefComplaint1(state);
   state = toggleBodyRegion(state, "chest");
   state = completeChiefComplaint1(state);
   state = toggleQuality(state, "crushing");
-  state = setPainScore(state, 8);
   state = completeChiefComplaintQuality(state);
   state = selectTimeBucket(state, "about_20_min");
   state = completeChiefComplaintDuration(state);
@@ -82,9 +83,8 @@ describe("summary + clear", () => {
     expect(byKey.informant?.value.zh).toContain("家屬 → 本人");
     expect(byKey.informant?.value.other).toContain("Patient");
     expect(byKey.chief?.obtained).toBe(true);
-    expect(byKey.chief?.value.zh).toContain("疼痛");
-    expect(byKey.chief?.value.zh).toContain("痛尺：8/10");
-    expect(byKey.chief?.value.other).toMatch(/Pain|pain/i);
+    expect(byKey.chief?.value.zh).toMatch(/機車|壓迫|交通事故/);
+    expect(byKey.chief?.value.zh).toContain("胸");
     expect(byKey.chief?.editStep).toBe("chief_complaint_quality");
     expect(byKey.past_history?.obtained).toBe(false);
     expect(byKey.past_history?.value.zh).toContain("不知道");
@@ -97,7 +97,7 @@ describe("summary + clear", () => {
     expect(text).not.toContain("非評估或診斷");
     expect(text).not.toContain("張小熊");
     expect(text).toContain("主訴：");
-    expect(text).toContain("疼痛");
+    expect(text).toMatch(/機車|壓迫|交通事故/);
     expect(text).not.toMatch(/Chief complaint:/);
   });
 

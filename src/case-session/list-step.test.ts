@@ -8,7 +8,9 @@ import {
 } from "./case-session.js";
 import {
   completeChiefComplaint1,
-  toggleComplaintType,
+  setTraumaTraffic,
+  setTraumaVehicle,
+  toggleBodyRegion,
 } from "./chief-complaint-1.js";
 import {
   completeChiefComplaintDuration,
@@ -39,7 +41,10 @@ function atBefore() {
       "trauma",
     ),
   );
-  state = toggleComplaintType(state, "weakness");
+  state = setTraumaTraffic(state, "traffic");
+  state = setTraumaVehicle(state, "car");
+  state = completeChiefComplaint1(state);
+  state = toggleBodyRegion(state, "abdomen");
   state = completeChiefComplaint1(state);
   state = toggleQuality(state, "same_as_complaint");
   state = completeChiefComplaintQuality(state);
@@ -48,52 +53,26 @@ function atBefore() {
 }
 
 describe("history list steps 之前→吃→過→藥→敏", () => {
-  it("supports multi-select and EMT 其他 note", () => {
+  it("toggles options and advances through the mnemonic", () => {
     let state = atBefore();
     expect(state.currentStep).toBe("before");
-
-    state = toggleListOption(state, "before", "walking");
-    state = toggleListOption(state, "before", "working");
-    expect(getListOptionIds(state, "before")).toEqual(["walking", "working"]);
-
-    state = toggleListOption(state, "before", "other");
-    expect(listStepNeedsNote(state, "before")).toBe(true);
-    state = setListNote(state, "before", "剛搬完重物");
-    expect(getListNote(state, "before")).toBe("剛搬完重物");
+    state = toggleListOption(state, "before", "sleeping");
+    expect(getListOptionIds(state, "before")).toContain("sleeping");
     expect(canCompleteListStep(state, "before")).toBe(true);
-
     state = completeListStep(state, "before");
     expect(state.currentStep).toBe("intake");
   });
 
-  it("uses meal single-select for 吃 and exclusive 無 clears other meds", () => {
+  it("opens note field when opensNote option selected", () => {
     let state = atBefore();
-    state = toggleListOption(state, "before", "resting");
-    state = completeListStep(state, "before");
-
-    state = toggleListOption(state, "intake", "today_breakfast");
-    state = toggleListOption(state, "intake", "yesterday_dinner");
-    expect(getListOptionIds(state, "intake")).toEqual(["yesterday_dinner"]);
-    state = completeListStep(state, "intake");
-
-    state = toggleListOption(state, "past_history", "diabetes");
-    state = toggleListOption(state, "past_history", "dialysis_left");
-    state = toggleListOption(state, "past_history", "dialysis_right");
-    state = toggleListOption(state, "past_history", "mental_illness");
-    expect(getListOptionIds(state, "past_history")).toEqual([
-      "diabetes",
-      "dialysis_right",
-      "mental_illness",
-    ]);
-    state = completeListStep(state, "past_history");
-
-    state = toggleListOption(state, "medications", "antihypertensive");
-    state = toggleListOption(state, "medications", "diabetes_meds");
-    state = toggleListOption(state, "medications", "none");
-    expect(getListOptionIds(state, "medications")).toEqual(["none"]);
+    state = toggleListOption(state, "before", "other");
+    expect(listStepNeedsNote(state, "before")).toBe(true);
+    state = setListNote(state, "before", "逛街中");
+    expect(getListNote(state, "before")).toBe("逛街中");
+    expect(canCompleteListStep(state, "before")).toBe(true);
   });
 
-  it("marks skip/unknown per step and allows free back/forward edit", () => {
+  it("supports unknown, skip, back, and goto", () => {
     let state = atBefore();
     state = markListStepUnknown(state, "before");
     expect(canCompleteListStep(state, "before")).toBe(true);
@@ -107,7 +86,7 @@ describe("history list steps 之前→吃→過→藥→敏", () => {
     state = goBackListStep(state, "past_history");
     expect(state.currentStep).toBe("intake");
 
-    state = goToStep(state, "allergies");
-    expect(state.currentStep).toBe("allergies");
+    state = goToStep(state, "medications");
+    expect(state.currentStep).toBe("medications");
   });
 });

@@ -4,6 +4,12 @@ import {
   nonTraumaPrimaryOpensNote,
 } from "../catalog/non-trauma-primary.js";
 import {
+  TRAUMA_INJURY_OPTIONS,
+  TRAUMA_VEHICLE_OPTIONS,
+  getTraumaInjury,
+  type TraumaTrafficRelated,
+} from "../catalog/trauma-primary.js";
+import {
   clearDrilldown,
   toggleRegion,
   toggleSubregion,
@@ -12,6 +18,7 @@ import { nextSelectedIds } from "./option-selection.js";
 import {
   type CaseState,
   type ChiefComplaint1Detail,
+  type TraumaPrimaryStage,
   emptyChiefComplaint1Detail,
   emptyStepAnswer,
 } from "./types.js";
@@ -20,16 +27,37 @@ function readDetail(state: CaseState): ChiefComplaint1Detail {
   const answer = state.answers.chief_complaint_1;
   if (!answer) return emptyChiefComplaint1Detail();
   const d = answer.detail as Partial<ChiefComplaint1Detail>;
+  const base = emptyChiefComplaint1Detail();
   return {
+    ...base,
     complaintTypeIds: d.complaintTypeIds ?? [],
     bodyRegionIds: d.bodyRegionIds ?? [],
     bodySubregionIds: d.bodySubregionIds ?? [],
     drilldownRegionId: d.drilldownRegionId ?? null,
+    traumaOhca: d.traumaOhca ?? false,
+    traumaTraffic: d.traumaTraffic ?? null,
+    traumaVehicleId: d.traumaVehicleId ?? null,
+    traumaInjuryTypeId: d.traumaInjuryTypeId ?? null,
+    traumaFallHeightMeters:
+      d.traumaFallHeightMeters === undefined
+        ? null
+        : d.traumaFallHeightMeters,
+    traumaStage: d.traumaStage ?? "mechanism",
   };
 }
 
 function readNote(state: CaseState): string {
   return state.answers.chief_complaint_1?.note ?? "";
+}
+
+function hasTraumaMechanismContent(detail: ChiefComplaint1Detail): boolean {
+  return (
+    detail.traumaOhca ||
+    detail.traumaTraffic !== null ||
+    detail.traumaVehicleId !== null ||
+    detail.traumaInjuryTypeId !== null ||
+    detail.traumaFallHeightMeters !== null
+  );
 }
 
 function writeDetail(
@@ -41,7 +69,17 @@ function writeDetail(
     detail.complaintTypeIds.length > 0 ||
     detail.bodyRegionIds.length > 0 ||
     detail.bodySubregionIds.length > 0 ||
-    note.trim().length > 0;
+    note.trim().length > 0 ||
+    hasTraumaMechanismContent(detail);
+
+  const optionIds = usesTraumaPrimary(state)
+    ? [
+        ...(detail.traumaOhca ? ["ohca"] : []),
+        ...(detail.traumaTraffic ? [detail.traumaTraffic] : []),
+        ...(detail.traumaVehicleId ? [detail.traumaVehicleId] : []),
+        ...(detail.traumaInjuryTypeId ? [detail.traumaInjuryTypeId] : []),
+      ]
+    : [...detail.complaintTypeIds];
 
   return {
     ...state,
@@ -50,7 +88,7 @@ function writeDetail(
       chief_complaint_1: {
         ...emptyStepAnswer(),
         status: hasContent ? "answered" : "empty",
-        optionIds: [...detail.complaintTypeIds],
+        optionIds,
         note,
         detail: { ...detail },
       },
@@ -70,14 +108,36 @@ export function usesNonTraumaPrimary(state: CaseState): boolean {
   return state.sceneType === "non_trauma";
 }
 
+export function usesTraumaPrimary(state: CaseState): boolean {
+  return state.sceneType === "trauma";
+}
+
+export function traumaAsksFallHeight(state: CaseState): boolean {
+  const id = readDetail(state).traumaInjuryTypeId;
+  if (!id) return false;
+  return getTraumaInjury(id)?.asksFallHeight === true;
+}
+
 export function needsBodyLocation(state: CaseState): boolean {
   if (usesNonTraumaPrimary(state)) return false;
+  if (usesTraumaPrimary(state)) {
+    return readDetail(state).traumaStage === "body";
+  }
   return complaintTypesNeedBody(readDetail(state).complaintTypeIds);
 }
 
 export function primaryOpensNote(state: CaseState): boolean {
   if (!usesNonTraumaPrimary(state)) return false;
   return nonTraumaPrimaryOpensNote(readDetail(state).complaintTypeIds);
+}
+
+export function canCompleteTraumaMechanism(state: CaseState): boolean {
+  const detail = readDetail(state);
+  if (!detail.traumaTraffic) return false;
+  if (detail.traumaTraffic === "traffic") {
+    return detail.traumaVehicleId !== null;
+  }
+  return detail.traumaInjuryTypeId !== null;
 }
 
 export function toggleComplaintType(
@@ -95,10 +155,8 @@ export function toggleComplaintType(
       "single",
     );
     const nextDetail: ChiefComplaint1Detail = {
+      ...emptyChiefComplaint1Detail(),
       complaintTypeIds: nextIds,
-      bodyRegionIds: [],
-      bodySubregionIds: [],
-      drilldownRegionId: null,
     };
     const note = nonTraumaPrimaryOpensNote(nextIds) ? readNote(state) : "";
     return writeDetail(state, nextDetail, note);
@@ -116,6 +174,85 @@ export function toggleComplaintType(
 
 export function setPrimaryNote(state: CaseState, note: string): CaseState {
   return writeDetail(state, readDetail(state), note);
+}
+
+export function toggleTraumaOhca(state: CaseState): CaseState {
+  if (!usesTraumaPrimary(state)) return state;
+  const detail = readDetail(state);
+  return writeDetail(state, { ...detail, traumaOhca: !detail.traumaOhca });
+}
+
+export function setTraumaTraffic(
+  state: CaseState,
+  traffic: TraumaTrafficRelated,
+): CaseState {
+  if (!usesTraumaPrimary(state)) return state;
+  const detail = readDetail(state);
+  const same = detail.traumaTraffic === traffic;
+  if (same) {
+    return writeDetail(state, {
+      ...detail,
+      traumaTraffic: null,
+      traumaVehicleId: null,
+      traumaInjuryTypeId: null,
+      traumaFallHeightMeters: null,
+    });
+  }
+  return writeDetail(state, {
+    ...detail,
+    traumaTraffic: traffic,
+    traumaVehicleId: null,
+    traumaInjuryTypeId: null,
+    traumaFallHeightMeters: null,
+  });
+}
+
+export function setTraumaVehicle(state: CaseState, vehicleId: string): CaseState {
+  if (!usesTraumaPrimary(state)) return state;
+  if (!TRAUMA_VEHICLE_OPTIONS.some((o) => o.id === vehicleId)) return state;
+  const detail = readDetail(state);
+  const next =
+    detail.traumaVehicleId === vehicleId
+      ? null
+      : vehicleId;
+  return writeDetail(state, { ...detail, traumaVehicleId: next });
+}
+
+export function setTraumaInjuryType(
+  state: CaseState,
+  injuryTypeId: string,
+): CaseState {
+  if (!usesTraumaPrimary(state)) return state;
+  if (!TRAUMA_INJURY_OPTIONS.some((o) => o.id === injuryTypeId)) return state;
+  const detail = readDetail(state);
+  const next =
+    detail.traumaInjuryTypeId === injuryTypeId ? null : injuryTypeId;
+  const asksHeight = next ? getTraumaInjury(next)?.asksFallHeight : false;
+  return writeDetail(state, {
+    ...detail,
+    traumaInjuryTypeId: next,
+    traumaFallHeightMeters: asksHeight ? detail.traumaFallHeightMeters : null,
+  });
+}
+
+export function setTraumaFallHeightMeters(
+  state: CaseState,
+  raw: string,
+): CaseState {
+  if (!usesTraumaPrimary(state) || !traumaAsksFallHeight(state)) return state;
+  const trimmed = raw.trim();
+  if (trimmed === "") {
+    return writeDetail(state, {
+      ...readDetail(state),
+      traumaFallHeightMeters: null,
+    });
+  }
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n < 0) return state;
+  return writeDetail(state, {
+    ...readDetail(state),
+    traumaFallHeightMeters: n,
+  });
 }
 
 export function toggleBodyRegion(state: CaseState, regionId: string): CaseState {
@@ -173,9 +310,18 @@ export function canCompleteChiefComplaint1(state: CaseState): boolean {
   const answer = state.answers.chief_complaint_1;
   if (!answer) return false;
   if (answer.status === "unknown" || answer.status === "skipped") return true;
-  if (answer.status !== "answered") return false;
 
   const detail = readDetail(state);
+
+  if (usesTraumaPrimary(state)) {
+    if (detail.traumaStage === "mechanism") {
+      return canCompleteTraumaMechanism(state);
+    }
+    if (answer.status !== "answered") return false;
+    return detail.bodyRegionIds.length > 0;
+  }
+
+  if (answer.status !== "answered") return false;
   if (detail.complaintTypeIds.length === 0) return false;
 
   if (usesNonTraumaPrimary(state)) {
@@ -188,13 +334,27 @@ export function canCompleteChiefComplaint1(state: CaseState): boolean {
   return true;
 }
 
-/** Finish step 1 (including skip/unknown) and move to 主訴 step 2. */
+/**
+ * Finish step 1 (including skip/unknown) and move to quality,
+ * or advance trauma mechanism → body stage.
+ */
 export function completeChiefComplaint1(state: CaseState): CaseState {
   if (!canCompleteChiefComplaint1(state)) return state;
 
   const status = state.answers.chief_complaint_1?.status;
   if (status === "unknown" || status === "skipped") {
     return { ...state, currentStep: "chief_complaint_quality" };
+  }
+
+  if (usesTraumaPrimary(state)) {
+    const detail = readDetail(state);
+    if (detail.traumaStage === "mechanism") {
+      return writeDetail(state, { ...detail, traumaStage: "body" });
+    }
+    return {
+      ...writeDetail(state, { ...detail, drilldownRegionId: null }),
+      currentStep: "chief_complaint_quality",
+    };
   }
 
   const detail = { ...readDetail(state), drilldownRegionId: null };
@@ -205,5 +365,15 @@ export function completeChiefComplaint1(state: CaseState): CaseState {
 }
 
 export function goBackFromChiefComplaint1(state: CaseState): CaseState {
+  if (usesTraumaPrimary(state)) {
+    const detail = readDetail(state);
+    if (detail.traumaStage === "body") {
+      return writeDetail(state, {
+        ...detail,
+        traumaStage: "mechanism" satisfies TraumaPrimaryStage,
+        drilldownRegionId: null,
+      });
+    }
+  }
   return { ...state, currentStep: "start" };
 }

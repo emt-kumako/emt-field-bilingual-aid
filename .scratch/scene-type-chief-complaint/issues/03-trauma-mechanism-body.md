@@ -4,12 +4,18 @@
 
 **Blocked by:** 01 — Scene type 開場閘門
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 創傷 OHCA 置頂可勾，仍可走因／非因交通分支
-- [ ] 因交通：僅四車種單選後進入身體圖
-- [ ] 非交通：傷類清單；無四車種
-- [ ] 墜落高度以公尺為準並帶出英制對照；燒燙傷僅勾選
-- [ ] 機轉完成後身體圖步驟可用既有 Body selection
-- [ ] 軟 Gate：交通未選車種等不可 Next；Back／不知道／跳過仍可用
-- [ ] CaseSession 測試覆蓋兩條創傷分支
+- [x] 創傷 OHCA 置頂可勾，仍可走因／非因交通分支
+- [x] 因交通：僅四車種單選後進入身體圖
+- [x] 非交通：傷類清單；無四車種
+- [x] 墜落高度以公尺為準並帶出英制對照；燒燙傷僅勾選
+- [x] 機轉完成後身體圖步驟可用既有 Body selection
+- [x] 軟 Gate：交通未選車種等不可 Next；Back／不知道／跳過仍可用
+- [x] CaseSession 測試覆蓋兩條創傷分支
+
+## Answer
+
+- Trauma primary: mechanism stage (OHCA toggle → traffic/non-traffic → vehicle or injury+optional fall meters) then body stage (existing Body selection).
+- Gate codes: `need_trauma_mechanism` / `need_trauma_vehicle` / `need_body_location`.
+- Vitest 50 passed; typecheck clean.

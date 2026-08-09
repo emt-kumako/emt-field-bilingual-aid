@@ -10,8 +10,16 @@ import {
 } from "../catalog/chief-complaint-duration.js";
 import { getHistoryCatalog, type HistoryStepId } from "../catalog/history-block.js";
 import { type BilingualText } from "../catalog/labels.js";
+import { getNonTraumaPrimary } from "../catalog/non-trauma-primary.js";
 import { getAccompanyingSymptom } from "../catalog/other-symptoms.js";
 import { SUMMARY_COPY } from "../catalog/summary-copy.js";
+import {
+  TRAUMA_OHCA_LABELS,
+  TRAUMA_TRAFFIC_OPTIONS,
+  TRAUMA_VEHICLE_OPTIONS,
+  formatMetersWithImperial,
+  getTraumaInjury,
+} from "../catalog/trauma-primary.js";
 import { UI_COPY } from "../catalog/ui-copy.js";
 import { INFORMANT_OPTIONS } from "../content/start-labels.js";
 import { getChiefComplaint1Detail } from "./chief-complaint-1.js";
@@ -123,12 +131,46 @@ function formatChiefParts(state: CaseState, lang: Lang): string[] {
   const dDur = getChiefComplaintDurationDetail(state);
   const parts: string[] = [];
 
-  if (d1.complaintTypeIds.length) {
+  if (state.sceneType === "trauma") {
+    if (d1.traumaOhca) {
+      parts.push(pick(TRAUMA_OHCA_LABELS, lang));
+    }
+    if (d1.traumaTraffic) {
+      const traffic = TRAUMA_TRAFFIC_OPTIONS.find(
+        (o) => o.id === d1.traumaTraffic,
+      );
+      if (traffic) parts.push(pick(traffic.labels, lang));
+    }
+    if (d1.traumaVehicleId) {
+      const vehicle = TRAUMA_VEHICLE_OPTIONS.find(
+        (o) => o.id === d1.traumaVehicleId,
+      );
+      if (vehicle) parts.push(pick(vehicle.labels, lang));
+    }
+    if (d1.traumaInjuryTypeId) {
+      const injury = getTraumaInjury(d1.traumaInjuryTypeId);
+      if (injury) {
+        let text = pick(injury.labels, lang);
+        if (
+          injury.asksFallHeight &&
+          d1.traumaFallHeightMeters !== null
+        ) {
+          text += ` ${formatMetersWithImperial(
+            d1.traumaFallHeightMeters,
+            lang === "zh" ? "zh" : "en",
+          )}`;
+        }
+        parts.push(text);
+      }
+    }
+  } else if (d1.complaintTypeIds.length) {
     parts.push(
       joinIds(
         d1.complaintTypeIds,
         lang,
         (id) => {
+          const nonTrauma = getNonTraumaPrimary(id)?.labels;
+          if (nonTrauma) return pick(nonTrauma, lang);
           const labels = COMPLAINT_TYPES.find((c) => c.id === id)?.labels;
           return labels ? pick(labels, lang) : undefined;
         },
