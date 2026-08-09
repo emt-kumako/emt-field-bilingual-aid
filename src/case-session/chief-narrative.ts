@@ -268,6 +268,18 @@ function partsForLang(state: CaseState, lang: Lang): string[] {
   return parts;
 }
 
+function hasAnsweredOnChiefComplaintPath(state: CaseState): boolean {
+  const a1 = state.answers.chief_complaint_1;
+  const aOpqrst = state.answers.chest_opqrst;
+  const aQuality = state.answers.chief_complaint_quality;
+  const aDur = state.answers.chief_complaint_duration;
+  if (a1?.status === "answered") return true;
+  if (aOpqrst?.status === "answered") return true;
+  if (aQuality?.status === "answered") return true;
+  if (aDur?.status === "answered") return true;
+  return false;
+}
+
 /** Ordered bilingual fragments + edit/obtained for summary. */
 export function buildChiefNarrativeFacts(
   state: CaseState,
@@ -276,6 +288,14 @@ export function buildChiefNarrativeFacts(
   const zhParts = partsForLang(state, "zh");
   const otherParts = partsForLang(state, lang);
   const editStep = chiefComplaintEditStep(state);
+  const a1 = state.answers.chief_complaint_1;
+
+  if (
+    (a1?.status === "unknown" || a1?.status === "skipped") &&
+    !hasAnsweredOnChiefComplaintPath(state)
+  ) {
+    return { fragments: [], editStep, obtained: false };
+  }
 
   const contentBeyondScene = zhParts.filter((p, i) => {
     if (i !== 0 || !state.sceneType) return true;

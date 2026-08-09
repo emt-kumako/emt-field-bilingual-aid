@@ -5,7 +5,6 @@ import { SUMMARY_COPY } from "../catalog/summary-copy.js";
 import { UI_COPY } from "../catalog/ui-copy.js";
 import { INFORMANT_OPTIONS } from "../content/start-labels.js";
 import { buildChiefNarrativeFacts } from "./chief-narrative.js";
-import { isChestOpqrstPath } from "./chest-opqrst.js";
 import { getOtherSymptomsDetail } from "./other-symptoms.js";
 import {
   type CaseState,
@@ -85,33 +84,6 @@ function formatChiefComplaint(
   const aOpqrst = state.answers.chest_opqrst;
   const aQuality = state.answers.chief_complaint_quality;
   const aDur = state.answers.chief_complaint_duration;
-  const chestPath = isChestOpqrstPath(state);
-
-  if (
-    (a1?.status === "unknown" || a1?.status === "skipped") &&
-    (!chestPath ||
-      aOpqrst?.status === "unknown" ||
-      aOpqrst?.status === "skipped" ||
-      !aOpqrst ||
-      aOpqrst.status === "empty") &&
-    (aQuality?.status === "unknown" ||
-      aQuality?.status === "skipped" ||
-      !aQuality ||
-      aQuality.status === "empty") &&
-    (aDur?.status === "unknown" ||
-      aDur?.status === "skipped" ||
-      !aDur ||
-      aDur.status === "empty")
-  ) {
-    const st = statusLine(a1?.status, lang);
-    return {
-      key: "chief",
-      label,
-      value: st?.value ?? line(SUMMARY_COPY.notObtained, lang),
-      obtained: false,
-      editStep: facts.editStep,
-    };
-  }
 
   if (!facts.obtained || facts.fragments.length === 0) {
     const blocked =

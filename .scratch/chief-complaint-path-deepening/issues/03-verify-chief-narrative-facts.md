@@ -4,11 +4,15 @@
 
 **Blocked by:** 01 — Verify Chief complaint path routing + soft gate
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Chief narrative facts expose ordered `{ zh, other }` fragments plus `editStep` and `obtained`
-- [ ] On-screen summary chief block reflects those fragments under existing bilingual primacy rules
-- [ ] Chinese-only summary copy remains complete from the Chinese sides of the fragments
-- [ ] Summary does not re-implement Scene type／mechanism／OPQRST／quality／duration branching
-- [ ] Skipped／unknown chief paths surface honest `obtained`／status behaviour
-- [ ] Coverage is through CaseSession summary／`viewFacts` behaviour
+- [x] Chief narrative facts expose ordered `{ zh, other }` fragments plus `editStep` and `obtained`
+- [x] On-screen summary chief block reflects those fragments under existing bilingual primacy rules
+- [x] Chinese-only summary copy remains complete from the Chinese sides of the fragments
+- [x] Summary does not re-implement Scene type／mechanism／OPQRST／quality／duration branching
+- [x] Skipped／unknown chief paths surface honest `obtained`／status behaviour
+- [x] Coverage is through CaseSession summary／`viewFacts` behaviour
+
+## Answer
+
+Gap-fix: `buildChiefNarrativeFacts` now returns `obtained: false` when primary is unknown／skipped and no answered chief-complaint-path step remains; `formatChiefComplaint` only joins／wraps facts (removed path-branch early return). Tests assert fragment join equals summary chief value, Chinese clipboard uses zh join, and unknown／skip path is not obtained. Suite 63 green.

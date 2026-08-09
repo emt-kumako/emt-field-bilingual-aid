@@ -482,6 +482,106 @@ describe("CaseSession apply / viewFacts", () => {
     expect(state.currentStep).toBe("chest_opqrst");
   });
 
+  it("keeps OPQRST T owned solely by chief complaint duration", () => {
+    let state = createCase();
+    state = apply(state, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, { type: "edit", slot: "informant", value: "self" });
+    state = apply(state, {
+      type: "edit",
+      slot: "sceneType",
+      value: "non_trauma",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, {
+      type: "edit",
+      slot: "complaintType",
+      value: "chest_pain",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, {
+      type: "edit",
+      slot: "opqrstOnset",
+      value: "sudden",
+    });
+    state = apply(state, {
+      type: "edit",
+      slot: "opqrstQuality",
+      value: "pressure",
+    });
+    state = apply(state, {
+      type: "edit",
+      slot: "opqrstSeverity",
+      value: "5",
+    });
+    state = apply(state, {
+      type: "edit",
+      slot: "opqrstTimePattern",
+      value: "intermittent",
+    });
+    state = apply(state, { type: "edit", slot: "timeAmount", value: "12" });
+    state = apply(state, { type: "edit", slot: "timeUnit", value: "minutes" });
+
+    const opqrstDetail = state.answers.chest_opqrst?.detail as Record<
+      string,
+      unknown
+    >;
+    expect(opqrstDetail).toBeTruthy();
+    expect(opqrstDetail).not.toHaveProperty("timePattern");
+    expect(opqrstDetail).not.toHaveProperty("timeAmount");
+    expect(opqrstDetail).not.toHaveProperty("timeUnit");
+    expect(opqrstDetail).not.toHaveProperty("timeUnknown");
+
+    const durationDetail = state.answers.chief_complaint_duration?.detail as {
+      timePattern: string | null;
+      timeAmount: number | null;
+      timeUnit: string | null;
+      timeUnknown: boolean;
+    };
+    expect(durationDetail).toMatchObject({
+      timePattern: "intermittent",
+      timeAmount: 12,
+      timeUnit: "minutes",
+      timeUnknown: false,
+    });
+    expect(viewFacts(state).screen).toMatchObject({
+      step: "chest_opqrst",
+      timePattern: durationDetail.timePattern,
+      timeAmount: durationDetail.timeAmount,
+      timeUnit: durationDetail.timeUnit,
+      timeUnknown: durationDetail.timeUnknown,
+    });
+
+    state = apply(state, { type: "edit", slot: "opqrstTimeUnknown" });
+    expect(state.answers.chief_complaint_duration?.detail).toMatchObject({
+      timePattern: "intermittent",
+      timeUnknown: true,
+    });
+    expect(viewFacts(state).screen).toMatchObject({
+      step: "chest_opqrst",
+      timeUnknown: true,
+    });
+
+    state = apply(state, { type: "nav", move: "next" });
+    expect(state.currentStep).toBe("before");
+    expect(state.currentStep).not.toBe("chief_complaint_duration");
+
+    state = apply(state, {
+      type: "nav",
+      move: "edit",
+      step: "chief_complaint_duration",
+    });
+    expect(viewFacts(state).screen).toMatchObject({
+      step: "chief_complaint_duration",
+      timePattern: "intermittent",
+      timeUnknown: true,
+    });
+  });
+
   it("branches secondary reasons by Scene type without body map", () => {
     let trauma = createCase();
     trauma = apply(trauma, {

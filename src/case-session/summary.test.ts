@@ -42,6 +42,8 @@ import {
   completeOtherSymptoms,
   toggleSecondaryReason,
 } from "./other-symptoms.js";
+import { buildChiefNarrativeFacts } from "./chief-narrative.js";
+import { apply, viewFacts } from "./orchestrate.js";
 import {
   buildSummarySections,
   editFromSummary,
@@ -172,6 +174,95 @@ describe("summary + clear", () => {
     expect(text).not.toContain("非評估或診斷");
     expect(text).not.toMatch(/Chief complaint:/);
     expect(text).not.toMatch(/Anywhere else/);
+  });
+
+  it("joins chief narrative facts into the summary chief block", () => {
+    const trauma = finishedTraumaCase();
+    const traumaFacts = buildChiefNarrativeFacts(trauma);
+    expect(traumaFacts.obtained).toBe(true);
+    expect(traumaFacts.fragments.length).toBeGreaterThan(1);
+    expect(traumaFacts.editStep).toBe("chief_complaint_quality");
+    expect(traumaFacts.fragments[0]?.zh).toContain("創傷");
+    expect(traumaFacts.fragments[0]?.other.toLowerCase()).toContain("trauma");
+
+    const traumaChief = buildSummarySections(trauma).find((s) => s.key === "chief");
+    expect(traumaChief?.obtained).toBe(true);
+    expect(traumaChief?.editStep).toBe(traumaFacts.editStep);
+    expect(traumaChief?.value.zh).toBe(
+      traumaFacts.fragments.map((f) => f.zh).join("；"),
+    );
+    expect(traumaChief?.value.other).toBe(
+      traumaFacts.fragments.map((f) => f.other).join("；"),
+    );
+
+    const clipboard = formatSummaryText(trauma);
+    expect(clipboard).toContain(
+      `主訴：${traumaFacts.fragments.map((f) => f.zh).join("；")}`,
+    );
+    expect(clipboard).not.toContain(traumaFacts.fragments[0]?.other ?? "trauma");
+
+    const chest = finishedChestOpqrstCase();
+    const chestFacts = buildChiefNarrativeFacts(chest);
+    expect(chestFacts.obtained).toBe(true);
+    expect(chestFacts.editStep).toBe("chest_opqrst");
+    const chestChief = buildSummarySections(chest).find((s) => s.key === "chief");
+    expect(chestChief?.value.zh).toBe(
+      chestFacts.fragments.map((f) => f.zh).join("；"),
+    );
+    expect(chestChief?.value.other).toBe(
+      chestFacts.fragments.map((f) => f.other).join("；"),
+    );
+
+    const summaryView = viewFacts({ ...chest, currentStep: "summary" }).screen;
+    expect(summaryView.step).toBe("summary");
+    if (summaryView.step !== "summary") throw new Error("expected summary");
+    const viewChief = summaryView.sections.find((s) => s.key === "chief");
+    expect(viewChief?.value).toEqual(chestChief?.value);
+  });
+
+  it("marks unknown／skipped chief complaint path as not obtained", () => {
+    let state = createCase();
+    state = apply(state, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, { type: "edit", slot: "informant", value: "self" });
+    state = apply(state, {
+      type: "edit",
+      slot: "sceneType",
+      value: "non_trauma",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, { type: "nav", move: "unknown" });
+    state = apply(state, { type: "nav", move: "next" });
+    expect(state.currentStep).toBe("chief_complaint_duration");
+    state = apply(state, { type: "nav", move: "skip" });
+    state = apply(state, { type: "nav", move: "next" });
+    expect(state.currentStep).toBe("before");
+
+    for (const _ of [
+      "before",
+      "intake",
+      "past_history",
+      "medications",
+      "allergies",
+      "other_symptoms",
+    ]) {
+      state = apply(state, { type: "nav", move: "skip" });
+      state = apply(state, { type: "nav", move: "next" });
+    }
+    expect(state.currentStep).toBe("summary");
+
+    const facts = buildChiefNarrativeFacts(state);
+    expect(facts.obtained).toBe(false);
+    expect(facts.fragments).toEqual([]);
+
+    const chief = buildSummarySections(state).find((s) => s.key === "chief");
+    expect(chief?.obtained).toBe(false);
+    expect(chief?.value.zh).toMatch(/不知道|未取得/);
+    expect(formatSummaryText(state)).toMatch(/主訴：.*(不知道|未取得)/);
   });
 
   it("supports edit-from-summary return and finishCase clear", () => {
