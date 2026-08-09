@@ -572,6 +572,312 @@ describe("CaseSession apply / viewFacts", () => {
     expect(nonTrauma.currentStep).toBe("summary");
   });
 
+  it("reverses the quality path and keeps soft exits on quality", () => {
+    let state = createCase();
+    state = apply(state, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, { type: "edit", slot: "informant", value: "self" });
+    state = apply(state, {
+      type: "edit",
+      slot: "sceneType",
+      value: "non_trauma",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, {
+      type: "edit",
+      slot: "complaintType",
+      value: "abdominal_pain",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    expect(state.currentStep).toBe("chief_complaint_quality");
+    expect(viewFacts(state).gate).toEqual({
+      reason: "need_quality_or_pain",
+      nextEnabled: false,
+    });
+
+    const blocked = apply(state, { type: "nav", move: "next" });
+    expect(blocked.currentStep).toBe("chief_complaint_quality");
+
+    let fromQuality = apply(state, { type: "nav", move: "back" });
+    expect(fromQuality.currentStep).toBe("chief_complaint_1");
+
+    let unknown = apply(state, { type: "nav", move: "unknown" });
+    expect(unknown.answers.chief_complaint_quality?.status).toBe("unknown");
+    unknown = apply(unknown, { type: "nav", move: "next" });
+    expect(unknown.currentStep).toBe("chief_complaint_duration");
+
+    let skipped = apply(state, { type: "nav", move: "skip" });
+    expect(skipped.answers.chief_complaint_quality?.status).toBe("skipped");
+    skipped = apply(skipped, { type: "nav", move: "next" });
+    expect(skipped.currentStep).toBe("chief_complaint_duration");
+
+    state = apply(state, {
+      type: "edit",
+      slot: "quality",
+      value: "crushing",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    expect(state.currentStep).toBe("chief_complaint_duration");
+    state = apply(state, { type: "nav", move: "back" });
+    expect(state.currentStep).toBe("chief_complaint_quality");
+
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, { type: "edit", slot: "timeAmount", value: "20" });
+    state = apply(state, { type: "edit", slot: "timeUnit", value: "minutes" });
+    state = apply(state, { type: "nav", move: "next" });
+    expect(state.currentStep).toBe("before");
+    state = apply(state, { type: "nav", move: "back" });
+    expect(state.currentStep).toBe("chief_complaint_duration");
+  });
+
+  it("backs from OPQRST to primary and soft-exits duration", () => {
+    let state = createCase();
+    state = apply(state, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, { type: "edit", slot: "informant", value: "self" });
+    state = apply(state, {
+      type: "edit",
+      slot: "sceneType",
+      value: "non_trauma",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, {
+      type: "edit",
+      slot: "complaintType",
+      value: "chest_pain",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    expect(state.currentStep).toBe("chest_opqrst");
+    state = apply(state, { type: "nav", move: "back" });
+    expect(state.currentStep).toBe("chief_complaint_1");
+
+    let fever = createCase();
+    fever = apply(fever, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    fever = apply(fever, { type: "nav", move: "next" });
+    fever = apply(fever, { type: "edit", slot: "informant", value: "self" });
+    fever = apply(fever, {
+      type: "edit",
+      slot: "sceneType",
+      value: "non_trauma",
+    });
+    fever = apply(fever, { type: "nav", move: "next" });
+    fever = apply(fever, {
+      type: "edit",
+      slot: "complaintType",
+      value: "fever",
+    });
+    fever = apply(fever, { type: "nav", move: "next" });
+    expect(fever.currentStep).toBe("chief_complaint_duration");
+    expect(viewFacts(fever).gate).toEqual({
+      reason: "need_duration",
+      nextEnabled: false,
+    });
+    const blocked = apply(fever, { type: "nav", move: "next" });
+    expect(blocked.currentStep).toBe("chief_complaint_duration");
+    expect(apply(fever, { type: "nav", move: "back" }).currentStep).toBe(
+      "chief_complaint_1",
+    );
+
+    let unknown = apply(fever, { type: "nav", move: "unknown" });
+    expect(unknown.answers.chief_complaint_duration?.status).toBe("unknown");
+    unknown = apply(unknown, { type: "nav", move: "next" });
+    expect(unknown.currentStep).toBe("before");
+
+    let skipped = apply(fever, { type: "nav", move: "skip" });
+    expect(skipped.answers.chief_complaint_duration?.status).toBe("skipped");
+    skipped = apply(skipped, { type: "nav", move: "next" });
+    expect(skipped.currentStep).toBe("before");
+  });
+
+  it("opens summary chief edit on the path-owned step via apply", () => {
+    const skipThroughHistoryToSummary = (state: ReturnType<typeof createCase>) => {
+      let next = state;
+      for (const _ of [
+        "before",
+        "intake",
+        "past_history",
+        "medications",
+        "allergies",
+        "other_symptoms",
+      ]) {
+        expect([
+          "before",
+          "intake",
+          "past_history",
+          "medications",
+          "allergies",
+          "other_symptoms",
+        ]).toContain(next.currentStep);
+        next = apply(next, { type: "nav", move: "skip" });
+        next = apply(next, { type: "nav", move: "next" });
+      }
+      expect(next.currentStep).toBe("summary");
+      return next;
+    };
+
+    let trauma = createCase();
+    trauma = apply(trauma, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    trauma = apply(trauma, { type: "nav", move: "next" });
+    trauma = apply(trauma, { type: "edit", slot: "informant", value: "self" });
+    trauma = apply(trauma, {
+      type: "edit",
+      slot: "sceneType",
+      value: "trauma",
+    });
+    trauma = apply(trauma, { type: "nav", move: "next" });
+    trauma = apply(trauma, {
+      type: "edit",
+      slot: "traumaTraffic",
+      value: "traffic",
+    });
+    trauma = apply(trauma, {
+      type: "edit",
+      slot: "traumaVehicle",
+      value: "motorcycle",
+    });
+    trauma = apply(trauma, { type: "nav", move: "next" });
+    trauma = apply(trauma, {
+      type: "edit",
+      slot: "bodyRegion",
+      value: "chest",
+    });
+    trauma = apply(trauma, { type: "nav", move: "next" });
+    trauma = apply(trauma, {
+      type: "edit",
+      slot: "quality",
+      value: "crushing",
+    });
+    trauma = apply(trauma, { type: "nav", move: "next" });
+    trauma = apply(trauma, { type: "edit", slot: "timeAmount", value: "15" });
+    trauma = apply(trauma, { type: "edit", slot: "timeUnit", value: "minutes" });
+    trauma = apply(trauma, { type: "nav", move: "next" });
+    expect(trauma.currentStep).toBe("before");
+    trauma = skipThroughHistoryToSummary(trauma);
+
+    const traumaScreen = viewFacts(trauma).screen;
+    expect(traumaScreen.step).toBe("summary");
+    if (traumaScreen.step !== "summary") throw new Error("expected summary");
+    const traumaChief = traumaScreen.sections.find((s) => s.key === "chief");
+    expect(traumaChief?.editStep).toBe("chief_complaint_quality");
+    trauma = apply(trauma, {
+      type: "nav",
+      move: "edit",
+      step: traumaChief!.editStep,
+    });
+    expect(trauma.currentStep).toBe("chief_complaint_quality");
+    expect(trauma.returnToSummary).toBe(true);
+
+    let chest = createCase();
+    chest = apply(chest, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    chest = apply(chest, { type: "nav", move: "next" });
+    chest = apply(chest, { type: "edit", slot: "informant", value: "self" });
+    chest = apply(chest, {
+      type: "edit",
+      slot: "sceneType",
+      value: "non_trauma",
+    });
+    chest = apply(chest, { type: "nav", move: "next" });
+    chest = apply(chest, {
+      type: "edit",
+      slot: "complaintType",
+      value: "chest_pain",
+    });
+    chest = apply(chest, { type: "nav", move: "next" });
+    chest = apply(chest, {
+      type: "edit",
+      slot: "opqrstOnset",
+      value: "sudden",
+    });
+    chest = apply(chest, {
+      type: "edit",
+      slot: "opqrstQuality",
+      value: "pressure",
+    });
+    chest = apply(chest, {
+      type: "edit",
+      slot: "opqrstSeverity",
+      value: "6",
+    });
+    chest = apply(chest, {
+      type: "edit",
+      slot: "opqrstTimePattern",
+      value: "continuous",
+    });
+    chest = apply(chest, { type: "edit", slot: "timeAmount", value: "10" });
+    chest = apply(chest, { type: "edit", slot: "timeUnit", value: "minutes" });
+    chest = apply(chest, { type: "nav", move: "next" });
+    expect(chest.currentStep).toBe("before");
+    chest = skipThroughHistoryToSummary(chest);
+
+    const chestScreen = viewFacts(chest).screen;
+    expect(chestScreen.step).toBe("summary");
+    if (chestScreen.step !== "summary") throw new Error("expected summary");
+    const chestChief = chestScreen.sections.find((s) => s.key === "chief");
+    expect(chestChief?.editStep).toBe("chest_opqrst");
+    chest = apply(chest, {
+      type: "nav",
+      move: "edit",
+      step: chestChief!.editStep,
+    });
+    expect(chest.currentStep).toBe("chest_opqrst");
+
+    let fever = createCase();
+    fever = apply(fever, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    fever = apply(fever, { type: "nav", move: "next" });
+    fever = apply(fever, { type: "edit", slot: "informant", value: "self" });
+    fever = apply(fever, {
+      type: "edit",
+      slot: "sceneType",
+      value: "non_trauma",
+    });
+    fever = apply(fever, { type: "nav", move: "next" });
+    fever = apply(fever, {
+      type: "edit",
+      slot: "complaintType",
+      value: "fever",
+    });
+    fever = apply(fever, { type: "nav", move: "next" });
+    fever = apply(fever, { type: "edit", slot: "timeAmount", value: "2" });
+    fever = apply(fever, { type: "edit", slot: "timeUnit", value: "hours" });
+    fever = apply(fever, { type: "nav", move: "next" });
+    fever = skipThroughHistoryToSummary(fever);
+    const feverScreen = viewFacts(fever).screen;
+    expect(feverScreen.step).toBe("summary");
+    if (feverScreen.step !== "summary") throw new Error("expected summary");
+    const feverChief = feverScreen.sections.find((s) => s.key === "chief");
+    expect(feverChief?.editStep).toBe("chief_complaint_duration");
+    fever = apply(fever, {
+      type: "nav",
+      move: "edit",
+      step: feverChief!.editStep,
+    });
+    expect(fever.currentStep).toBe("chief_complaint_duration");
+  });
+
   it("allows OPQRST unknown/skip and time-unknown to satisfy T", () => {
     let state = createCase();
     state = apply(state, {
