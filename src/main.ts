@@ -679,20 +679,9 @@ function renderChestOpqrst(): void {
   );
   const severityButtons = Array.from({ length: 11 }, (_, score) => {
     const pressed = screen.severity === score;
-    const face =
-      score === 0
-        ? "😀"
-        : score <= 3
-          ? "🙂"
-          : score <= 6
-            ? "😐"
-            : score <= 9
-              ? "😣"
-              : "😭";
     return `
       <button type="button" class="option pain-score" data-action="opqrst-severity" data-id="${score}" aria-pressed="${pressed}">
-        <span class="pain-face" aria-hidden="true">${face}</span>
-        <span>${score}</span>
+        ${score}
       </button>`;
   }).join("");
 
@@ -707,10 +696,9 @@ function renderChestOpqrst(): void {
   getView().innerHTML = screenLayout({
     header: `
       <header class="step-header">
-        <p class="eyebrow">主訴 · OPQRST</p>
-        <h1>OPQRST</h1>
-        <p class="lead">${escapeHtml(sourceNote.primary)} · ${escapeHtml(sourceNote.secondary)}</p>
-        <p class="lead"><a href="${PAIN_SCALE_SOURCE_URL}" target="_blank" rel="noopener noreferrer">medicalxpress.com</a></p>
+        <p class="eyebrow">主訴</p>
+        <h1>胸痛／胸悶 · 怎麼發生的</h1>
+        <p class="lead">Chest pain / tightness · how it started</p>
       </header>
     `,
     body: `
@@ -741,7 +729,13 @@ function renderChestOpqrst(): void {
       <section class="section">
         <h2>S · 0–10</h2>
         <div class="pain-scale-bar" aria-hidden="true"></div>
+        <div class="pain-face-ref" aria-hidden="true">
+          <span>😀 0</span><span>🙂 1–3</span><span>😐 4–6</span><span>😣 7–9</span><span>😭 10</span>
+        </div>
         <div class="option-grid cols-6">${severityButtons}</div>
+        <p class="source-note">${escapeHtml(sourceNote.primary)} · ${escapeHtml(sourceNote.secondary)}
+          <a href="${PAIN_SCALE_SOURCE_URL}" target="_blank" rel="noopener noreferrer">medicalxpress.com</a>
+        </p>
       </section>
       <section class="section">
         <h2>T</h2>

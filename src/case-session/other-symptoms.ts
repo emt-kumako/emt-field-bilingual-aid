@@ -13,12 +13,9 @@ import {
 function readDetail(state: CaseState): OtherSymptomsDetail {
   const answer = state.answers.other_symptoms;
   if (!answer) return emptyOtherSymptomsDetail();
-  const d = answer.detail as Partial<OtherSymptomsDetail> & {
-    /** Legacy accompanying-symptom field. */
-    symptomIds?: string[];
-  };
+  const d = answer.detail as Partial<OtherSymptomsDetail>;
   return {
-    reasonIds: d.reasonIds ?? d.symptomIds ?? [],
+    reasonIds: d.reasonIds ?? [],
   };
 }
 
@@ -65,9 +62,6 @@ export function toggleSecondaryReason(
     reasonIds: nextSelectedIds(detail.reasonIds, catalog, reasonId, "multi"),
   });
 }
-
-/** @deprecated Use toggleSecondaryReason — kept for older call sites during rename. */
-export const toggleAccompanyingSymptom = toggleSecondaryReason;
 
 export function markOtherSymptomsUnknown(state: CaseState): CaseState {
   return {

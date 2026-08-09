@@ -125,7 +125,6 @@ export {
   markOtherSymptomsUnknown,
   secondaryCatalogKind,
   skipOtherSymptoms,
-  toggleAccompanyingSymptom,
   toggleSecondaryReason,
 } from "./other-symptoms.js";
 export {
