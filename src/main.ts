@@ -10,6 +10,18 @@ import {
   TRAUMA_VEHICLE_OPTIONS,
   formatMetersWithImperial,
 } from "./catalog/trauma-primary.js";
+import {
+  OPQRST_ONSET,
+  OPQRST_PROVOCATION,
+  OPQRST_QUALITY,
+  OPQRST_RADIATION_SITES,
+  OPQRST_REGIONS,
+  OPQRST_TIME_PATTERN,
+  OPQRST_TIME_UNKNOWN_LABELS,
+  OPQRST_RADIATION_TOGGLE_LABELS,
+  PAIN_SCALE_SOURCE_NOTE,
+  PAIN_SCALE_SOURCE_URL,
+} from "./catalog/chest-opqrst.js";
 import { visibleQualityOptions } from "./catalog/chief-complaint-quality.js";
 import {
   TIME_BUCKETS,
@@ -123,6 +135,7 @@ const GATE_COPY: Record<GateReason, string> = {
   need_body_location: "此主訴需點選身體部位後才能下一步",
   need_quality_or_pain:
     "請選擇怎麼不舒服（或「同哪裡不舒服」／疼痛指數），或按「不知道／無法回答／跳過」",
+  need_opqrst: "請完成 O／Q／S／T（P／R 可空），或按「不知道／無法回答／跳過」",
   need_duration:
     "請輸入多久了（數字＋單位）或時段，或按「不知道／無法回答／跳過」",
   need_list_selection: "請選擇至少一項，或按「不知道／無法回答／跳過」",
@@ -157,6 +170,7 @@ function toIntent(
     case "start-lang-next":
     case "begin":
     case "cc1-next":
+    case "opqrst-next":
     case "ccq-next":
     case "ccd-next":
     case "hist-next":
@@ -164,23 +178,46 @@ function toIntent(
       return { type: "nav", move: "next" };
     case "start-informant-back":
     case "cc1-back":
+    case "opqrst-back":
     case "ccq-back":
     case "ccd-back":
     case "hist-back":
     case "sense-back":
       return { type: "nav", move: "back" };
     case "cc1-unknown":
+    case "opqrst-unknown":
     case "ccq-unknown":
     case "ccd-unknown":
     case "hist-unknown":
     case "sense-unknown":
       return { type: "nav", move: "unknown" };
     case "cc1-skip":
+    case "opqrst-skip":
     case "ccq-skip":
     case "ccd-skip":
     case "hist-skip":
     case "sense-skip":
       return { type: "nav", move: "skip" };
+    case "opqrst-onset":
+      return id ? { type: "edit", slot: "opqrstOnset", value: id } : null;
+    case "opqrst-provocation":
+      return id ? { type: "edit", slot: "opqrstProvocation", value: id } : null;
+    case "opqrst-quality":
+      return id ? { type: "edit", slot: "opqrstQuality", value: id } : null;
+    case "opqrst-region":
+      return id ? { type: "edit", slot: "opqrstRegion", value: id } : null;
+    case "opqrst-radiation":
+      return { type: "edit", slot: "opqrstRadiation" };
+    case "opqrst-radiation-site":
+      return id
+        ? { type: "edit", slot: "opqrstRadiationSite", value: id }
+        : null;
+    case "opqrst-severity":
+      return id ? { type: "edit", slot: "opqrstSeverity", value: id } : null;
+    case "opqrst-time-pattern":
+      return id ? { type: "edit", slot: "opqrstTimePattern", value: id } : null;
+    case "opqrst-time-unknown":
+      return { type: "edit", slot: "opqrstTimeUnknown" };
     case "cc1-complaint":
       return id ? { type: "edit", slot: "complaintType", value: id } : null;
     case "cc1-note":
@@ -303,6 +340,9 @@ function render(): void {
       break;
     case "chief_complaint_1":
       renderChiefComplaint1();
+      break;
+    case "chest_opqrst":
+      renderChestOpqrst();
       break;
     case "chief_complaint_quality":
       renderChiefComplaintQuality();
@@ -596,6 +636,7 @@ const LANG_FLAGS: Record<SecondLanguage, string> = {
 const INTERVIEW_STEPS: InterviewStep[] = [
   "start",
   "chief_complaint_1",
+  "chest_opqrst",
   "chief_complaint_quality",
   "chief_complaint_duration",
   "before",
@@ -616,6 +657,128 @@ function cc1StatusNote(): string {
   if (status === "unknown") return `<p class="status-note">已標示：不知道</p>`;
   if (status === "skipped") return `<p class="status-note">已標示：跳過</p>`;
   return "";
+}
+
+function optionButtons(
+  options: { id: string; labels: import("./catalog/labels.js").BilingualText }[],
+  action: string,
+  selected: string | string[] | null,
+): string {
+  const selectedSet = new Set(
+    Array.isArray(selected) ? selected : selected ? [selected] : [],
+  );
+  return options
+    .map((opt) => {
+      const pressed = selectedSet.has(opt.id);
+      return `
+      <button type="button" class="option" data-action="${action}" data-id="${opt.id}" aria-pressed="${pressed}">
+        ${bilingualButtonLabel(opt.labels)}
+      </button>`;
+    })
+    .join("");
+}
+
+function renderChestOpqrst(): void {
+  const screen = viewFacts(state).screen;
+  if (screen.step !== "chest_opqrst") return;
+  const sourceNote = bilingualInline(
+    PAIN_SCALE_SOURCE_NOTE,
+    secondLang(),
+    INTERVIEW_PRIMACY,
+  );
+  const severityButtons = Array.from({ length: 11 }, (_, score) => {
+    const pressed = screen.severity === score;
+    const face =
+      score === 0
+        ? "😀"
+        : score <= 3
+          ? "🙂"
+          : score <= 6
+            ? "😐"
+            : score <= 9
+              ? "😣"
+              : "😭";
+    return `
+      <button type="button" class="option pain-score" data-action="opqrst-severity" data-id="${score}" aria-pressed="${pressed}">
+        <span class="pain-face" aria-hidden="true">${face}</span>
+        <span>${score}</span>
+      </button>`;
+  }).join("");
+
+  const unitButtons = TIME_UNITS.map((u) => {
+    const pressed = screen.timeUnit === u.id;
+    return `
+      <button type="button" class="option" data-action="ccd-time-unit" data-id="${u.id}" aria-pressed="${pressed}">
+        ${bilingualButtonLabel(u.labels)}
+      </button>`;
+  }).join("");
+
+  getView().innerHTML = screenLayout({
+    header: `
+      <header class="step-header">
+        <p class="eyebrow">主訴 · OPQRST</p>
+        <h1>OPQRST</h1>
+        <p class="lead">${escapeHtml(sourceNote.primary)} · ${escapeHtml(sourceNote.secondary)}</p>
+        <p class="lead"><a href="${PAIN_SCALE_SOURCE_URL}" target="_blank" rel="noopener noreferrer">medicalxpress.com</a></p>
+      </header>
+    `,
+    body: `
+      <section class="section">
+        <h2>O</h2>
+        <div class="option-grid cols-2">${optionButtons(OPQRST_ONSET, "opqrst-onset", screen.onsetId)}</div>
+      </section>
+      <section class="section">
+        <h2>P</h2>
+        <div class="option-grid cols-2">${optionButtons(OPQRST_PROVOCATION, "opqrst-provocation", screen.provocationIds)}</div>
+      </section>
+      <section class="section">
+        <h2>Q</h2>
+        <div class="option-grid cols-2">${optionButtons(OPQRST_QUALITY, "opqrst-quality", screen.qualityId)}</div>
+      </section>
+      <section class="section">
+        <h2>R</h2>
+        <div class="option-grid cols-2">${optionButtons(OPQRST_REGIONS, "opqrst-region", screen.regionIds)}</div>
+        <button type="button" class="option" data-action="opqrst-radiation" aria-pressed="${screen.radiation}">
+          ${bilingualButtonLabel(OPQRST_RADIATION_TOGGLE_LABELS)}
+        </button>
+        ${
+          screen.radiation
+            ? `<div class="option-grid cols-2">${optionButtons(OPQRST_RADIATION_SITES, "opqrst-radiation-site", screen.radiationSiteIds)}</div>`
+            : ""
+        }
+      </section>
+      <section class="section">
+        <h2>S · 0–10</h2>
+        <div class="pain-scale-bar" aria-hidden="true"></div>
+        <div class="option-grid cols-6">${severityButtons}</div>
+      </section>
+      <section class="section">
+        <h2>T</h2>
+        <div class="option-grid cols-2">${optionButtons(OPQRST_TIME_PATTERN, "opqrst-time-pattern", screen.timePattern)}</div>
+        <label class="field">
+          <span class="field-label">約</span>
+          <input type="number" min="1" inputmode="numeric" data-action="ccd-time-amount" value="${
+            screen.timeAmount ?? ""
+          }" ${screen.timeUnknown ? "disabled" : ""} />
+        </label>
+        <div class="option-grid cols-3">${unitButtons}</div>
+        <button type="button" class="option" data-action="opqrst-time-unknown" aria-pressed="${screen.timeUnknown}">
+          ${bilingualButtonLabel(OPQRST_TIME_UNKNOWN_LABELS)}
+        </button>
+      </section>
+      ${softGateNote()}
+    `,
+    actions: `
+      <div class="actions">
+        <button type="button" class="secondary" data-action="opqrst-back">上一步</button>
+        <button type="button" class="ghost" data-action="opqrst-unknown">不知道</button>
+        <button type="button" class="ghost" data-action="opqrst-unknown">無法回答</button>
+        <button type="button" class="ghost" data-action="opqrst-skip">跳過</button>
+        <button type="button" class="primary" data-action="opqrst-next" ${nextDisabledAttr()}>下一步</button>
+      </div>
+      ${returnSummaryBar()}
+    `,
+  });
 }
 
 function cc1ActionBar(): string {
@@ -1423,6 +1586,12 @@ app.addEventListener("input", (event) => {
 
   if (action === "ccd-time-amount" || action === "ccd-refine") {
     refreshDurationNextAndPreview();
+    const opqrstNext = app!.querySelector<HTMLButtonElement>(
+      "button[data-action='opqrst-next']",
+    );
+    if (opqrstNext) {
+      opqrstNext.disabled = !viewFacts(state).gate.nextEnabled;
+    }
     if (action === "ccd-refine") {
       const nextBtn = app!.querySelector<HTMLButtonElement>(
         "button[data-action='ccd-next']",

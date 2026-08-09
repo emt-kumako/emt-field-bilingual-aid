@@ -358,8 +358,15 @@ export function completeChiefComplaint1(state: CaseState): CaseState {
   }
 
   const detail = { ...readDetail(state), drilldownRegionId: null };
+  const written = writeDetail(state, detail);
+  if (
+    usesNonTraumaPrimary(state) &&
+    detail.complaintTypeIds.includes("chest_pain")
+  ) {
+    return { ...written, currentStep: "chest_opqrst" };
+  }
   return {
-    ...writeDetail(state, detail),
+    ...written,
     currentStep: "chief_complaint_quality",
   };
 }

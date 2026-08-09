@@ -32,8 +32,12 @@ _Avoid_: App controller, main logic, interview service
 Interview step for how the discomfort feels (qualities) and pain score when relevant. Step id: `chief_complaint_quality`.
 _Avoid_: chief_complaint_2, CC2, combined chief complaint detail
 
+**OPQRST chest page**:
+Non-trauma path after primary「胸悶／胸痛」: onset, provocation, quality, region/radiation, 0–10 severity, and time (pattern + approx duration or unknown). Step id: `chest_opqrst`. Writes chief complaint duration and skips the shared duration step (and quality).
+_Avoid_: Full OPQRST for every complaint, free-text history
+
 **Chief complaint duration**:
-Interview step for how long the problem has lasted (numeric duration, buckets, period, EMT refine). Step id: `chief_complaint_duration`.
+Interview step for how long the problem has lasted (numeric duration, buckets, period, EMT refine). Step id: `chief_complaint_duration`. May be filled by the OPQRST chest page T fields instead of visiting this step.
 _Avoid_: Treating duration as part of “step 2”
 
 **Option selection**:

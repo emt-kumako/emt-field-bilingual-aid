@@ -6,6 +6,7 @@ import {
 import {
   type CaseState,
   type ChiefComplaintDurationDetail,
+  type DurationTimePattern,
   type SecondLanguage,
   emptyChiefComplaintDurationDetail,
   emptyStepAnswer,
@@ -16,6 +17,7 @@ function readDuration(state: CaseState): ChiefComplaintDurationDetail {
   if (!answer) return emptyChiefComplaintDurationDetail();
   const d = answer.detail as Partial<ChiefComplaintDurationDetail>;
   const unit = d.timeUnit;
+  const pattern = d.timePattern;
   return {
     timeMode: d.timeMode ?? null,
     timeBucketId: d.timeBucketId ?? null,
@@ -23,6 +25,9 @@ function readDuration(state: CaseState): ChiefComplaintDurationDetail {
     timeUnit:
       unit === "minutes" || unit === "hours" || unit === "days" ? unit : null,
     timeRefine: d.timeRefine ?? "",
+    timePattern:
+      pattern === "intermittent" || pattern === "continuous" ? pattern : null,
+    timeUnknown: d.timeUnknown === true,
   };
 }
 
@@ -37,11 +42,20 @@ function hasDurationInput(detail: ChiefComplaintDurationDetail): boolean {
 function writeDuration(
   state: CaseState,
   detail: ChiefComplaintDurationDetail,
+  statusOverride?: "answered" | "empty" | "unknown",
 ): CaseState {
   const hasContent =
     detail.timeBucketId !== null ||
     hasDurationInput(detail) ||
-    detail.timeRefine.trim() !== "";
+    detail.timeRefine.trim() !== "" ||
+    detail.timePattern !== null ||
+    detail.timeUnknown;
+
+  let status: "answered" | "empty" | "unknown" =
+    statusOverride ?? (hasContent ? "answered" : "empty");
+  if (!statusOverride && detail.timeUnknown && !hasDurationInput(detail)) {
+    status = "unknown";
+  }
 
   return {
     ...state,
@@ -49,7 +63,7 @@ function writeDuration(
       ...state.answers,
       chief_complaint_duration: {
         ...emptyStepAnswer(),
-        status: hasContent ? "answered" : "empty",
+        status,
         detail: { ...detail },
       },
     },
@@ -159,6 +173,31 @@ export function skipChiefComplaintDuration(state: CaseState): CaseState {
   };
 }
 
+export function setTimePattern(
+  state: CaseState,
+  pattern: DurationTimePattern | null,
+): CaseState {
+  return writeDuration(state, {
+    ...readDuration(state),
+    timePattern: pattern,
+  });
+}
+
+export function setTimeUnknown(state: CaseState, unknown: boolean): CaseState {
+  const detail = readDuration(state);
+  return writeDuration(
+    state,
+    {
+      ...detail,
+      timeUnknown: unknown,
+      timeAmount: unknown ? null : detail.timeAmount,
+      timeUnit: unknown ? null : detail.timeUnit,
+      timeBucketId: unknown ? null : detail.timeBucketId,
+    },
+    unknown ? "unknown" : undefined,
+  );
+}
+
 export function canCompleteChiefComplaintDuration(state: CaseState): boolean {
   const answer = state.answers.chief_complaint_duration;
   if (!answer) return false;
@@ -166,6 +205,13 @@ export function canCompleteChiefComplaintDuration(state: CaseState): boolean {
   if (answer.status !== "answered") return false;
   const detail = readDuration(state);
   return detail.timeBucketId !== null || hasDurationInput(detail);
+}
+
+/** OPQRST T: pattern + (approx duration or 時間不詳). */
+export function durationSatisfiedFromOpqrst(state: CaseState): boolean {
+  const detail = readDuration(state);
+  if (!detail.timePattern) return false;
+  return hasDurationInput(detail) || detail.timeUnknown;
 }
 
 /** Finish 多久了 → 之前. */

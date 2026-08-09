@@ -54,6 +54,27 @@ import {
   skipChiefComplaintDuration,
 } from "./chief-complaint-duration.js";
 import {
+  canCompleteChestOpqrst,
+  completeChestOpqrst,
+  getChestOpqrstDetail,
+  goBackFromChestOpqrst,
+  isChestOpqrstPath,
+  markChestOpqrstUnknown,
+  setOpqrstOnset,
+  setOpqrstQuality,
+  setOpqrstRadiation,
+  setOpqrstSeverity,
+  setOpqrstTimeAmount,
+  setOpqrstTimePattern,
+  setOpqrstTimeUnit,
+  setOpqrstTimeUnknown,
+  skipChestOpqrst,
+  toggleOpqrstProvocation,
+  toggleOpqrstRadiationSite,
+  toggleOpqrstRegion,
+} from "./chest-opqrst.js";
+import { PAIN_SCALE_SOURCE_URL } from "../catalog/chest-opqrst.js";
+import {
   canCompleteListStep,
   completeListStep,
   getListNote,
@@ -107,6 +128,15 @@ export type Slot =
   | "traumaVehicle"
   | "traumaInjury"
   | "traumaFallHeight"
+  | "opqrstOnset"
+  | "opqrstProvocation"
+  | "opqrstQuality"
+  | "opqrstRegion"
+  | "opqrstRadiation"
+  | "opqrstRadiationSite"
+  | "opqrstSeverity"
+  | "opqrstTimePattern"
+  | "opqrstTimeUnknown"
   | "bodyRegion"
   | "bodySubregion"
   | "bodyDrilldown"
@@ -164,6 +194,21 @@ export type ScreenFacts =
       traumaFallHeightMeters: number | null;
       traumaAsksFallHeight: boolean;
       traumaStage: "mechanism" | "body";
+    }
+  | {
+      step: "chest_opqrst";
+      onsetId: string | null;
+      provocationIds: string[];
+      qualityId: string | null;
+      regionIds: string[];
+      radiation: boolean;
+      radiationSiteIds: string[];
+      severity: number | null;
+      timePattern: "intermittent" | "continuous" | null;
+      timeAmount: number | null;
+      timeUnit: "minutes" | "hours" | "days" | null;
+      timeUnknown: boolean;
+      painScaleSourceUrl: string;
     }
   | {
       step: "chief_complaint_quality";
@@ -266,10 +311,46 @@ function applyEdit(state: CaseState, slot: Slot, value?: string): CaseState {
     case "timeBucket":
       if (!value) return state;
       return selectTimeBucket(state, value);
+    case "opqrstOnset":
+      if (!value) return state;
+      return setOpqrstOnset(state, value);
+    case "opqrstProvocation":
+      if (!value) return state;
+      return toggleOpqrstProvocation(state, value);
+    case "opqrstQuality":
+      if (!value) return state;
+      return setOpqrstQuality(state, value);
+    case "opqrstRegion":
+      if (!value) return state;
+      return toggleOpqrstRegion(state, value);
+    case "opqrstRadiation":
+      if (value === "true") return setOpqrstRadiation(state, true);
+      if (value === "false") return setOpqrstRadiation(state, false);
+      return setOpqrstRadiation(
+        state,
+        !getChestOpqrstDetail(state).radiation,
+      );
+    case "opqrstRadiationSite":
+      if (!value) return state;
+      return toggleOpqrstRadiationSite(state, value);
+    case "opqrstSeverity":
+      if (value === undefined || value === "") return state;
+      return setOpqrstSeverity(state, Number(value));
+    case "opqrstTimePattern":
+      if (value !== "intermittent" && value !== "continuous") return state;
+      return setOpqrstTimePattern(state, value);
+    case "opqrstTimeUnknown":
+      return setOpqrstTimeUnknown(state);
     case "timeAmount":
+      if (state.currentStep === "chest_opqrst") {
+        return setOpqrstTimeAmount(state, value ?? "");
+      }
       return setTimeAmount(state, value ?? "");
     case "timeUnit":
       if (!value) return state;
+      if (state.currentStep === "chest_opqrst") {
+        return setOpqrstTimeUnit(state, value);
+      }
       return setTimeUnit(state, value);
     case "timeRefine":
       return setTimeRefine(state, value ?? "");
@@ -310,6 +391,8 @@ function applyNavNext(state: CaseState): CaseState {
         : beginInterview(state);
     case "chief_complaint_1":
       return completeChiefComplaint1(state);
+    case "chest_opqrst":
+      return completeChestOpqrst(state);
     case "chief_complaint_quality":
       return completeChiefComplaintQuality(state);
     case "chief_complaint_duration":
@@ -336,11 +419,20 @@ function applyNavBack(state: CaseState): CaseState {
       return state;
     case "chief_complaint_1":
       return landingOnStart(goBackFromChiefComplaint1(state));
+    case "chest_opqrst":
+      return goBackFromChestOpqrst(state);
     case "chief_complaint_quality":
       return goBackFromChiefComplaintQuality(state);
     case "chief_complaint_duration":
+      if (isChestOpqrstPath(state)) {
+        return { ...state, currentStep: "chest_opqrst" };
+      }
       return goBackFromChiefComplaintDuration(state);
     case "before":
+      if (isChestOpqrstPath(state)) {
+        return { ...state, currentStep: "chest_opqrst" };
+      }
+      return goBackListStep(state, state.currentStep);
     case "intake":
     case "past_history":
     case "medications":
@@ -357,6 +449,8 @@ function applyNavUnknown(state: CaseState): CaseState {
   switch (state.currentStep) {
     case "chief_complaint_1":
       return markChiefComplaint1Unknown(state);
+    case "chest_opqrst":
+      return markChestOpqrstUnknown(state);
     case "chief_complaint_quality":
       return markChiefComplaintQualityUnknown(state);
     case "chief_complaint_duration":
@@ -378,6 +472,8 @@ function applyNavSkip(state: CaseState): CaseState {
   switch (state.currentStep) {
     case "chief_complaint_1":
       return skipChiefComplaint1(state);
+    case "chest_opqrst":
+      return skipChestOpqrst(state);
     case "chief_complaint_quality":
       return skipChiefComplaintQuality(state);
     case "chief_complaint_duration":
@@ -487,6 +583,10 @@ function gateFor(state: CaseState): GateFacts {
       }
       return { reason: "need_complaint_type", nextEnabled: false };
     }
+    case "chest_opqrst":
+      return canCompleteChestOpqrst(state)
+        ? { reason: null, nextEnabled: true }
+        : { reason: "need_opqrst", nextEnabled: false };
     case "chief_complaint_quality":
       return canCompleteChiefComplaintQuality(state)
         ? { reason: null, nextEnabled: true }
@@ -548,6 +648,25 @@ function screenFor(state: CaseState): ScreenFacts {
         traumaFallHeightMeters: d.traumaFallHeightMeters,
         traumaAsksFallHeight: traumaAsksFallHeight(state),
         traumaStage: d.traumaStage,
+      };
+    }
+    case "chest_opqrst": {
+      const d = getChestOpqrstDetail(state);
+      const dur = getChiefComplaintDurationDetail(state);
+      return {
+        step: "chest_opqrst",
+        onsetId: d.onsetId,
+        provocationIds: d.provocationIds,
+        qualityId: d.qualityId,
+        regionIds: d.regionIds,
+        radiation: d.radiation,
+        radiationSiteIds: d.radiationSiteIds,
+        severity: d.severity,
+        timePattern: d.timePattern,
+        timeAmount: dur.timeAmount,
+        timeUnit: dur.timeUnit,
+        timeUnknown: dur.timeUnknown,
+        painScaleSourceUrl: PAIN_SCALE_SOURCE_URL,
       };
     }
     case "chief_complaint_quality": {

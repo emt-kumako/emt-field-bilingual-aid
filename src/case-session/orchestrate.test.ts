@@ -292,4 +292,155 @@ describe("CaseSession apply / viewFacts", () => {
     skipped = apply(skipped, { type: "nav", move: "next" });
     expect(skipped.currentStep).toBe("chief_complaint_quality");
   });
+
+  it("routes non-trauma chest_pain through OPQRST, writes duration, skips quality/duration", () => {
+    let state = createCase();
+    state = apply(state, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, { type: "edit", slot: "informant", value: "self" });
+    state = apply(state, {
+      type: "edit",
+      slot: "sceneType",
+      value: "non_trauma",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, {
+      type: "edit",
+      slot: "complaintType",
+      value: "chest_pain",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+
+    expect(state.currentStep).toBe("chest_opqrst");
+    expect(viewFacts(state).screen).toMatchObject({
+      step: "chest_opqrst",
+      onsetId: null,
+      severity: null,
+      timeUnknown: false,
+    });
+    expect(viewFacts(state).gate).toEqual({
+      reason: "need_opqrst",
+      nextEnabled: false,
+    });
+
+    const blocked = apply(state, { type: "nav", move: "next" });
+    expect(blocked.currentStep).toBe("chest_opqrst");
+
+    state = apply(state, {
+      type: "edit",
+      slot: "opqrstOnset",
+      value: "sudden",
+    });
+    state = apply(state, {
+      type: "edit",
+      slot: "opqrstQuality",
+      value: "pressure",
+    });
+    state = apply(state, {
+      type: "edit",
+      slot: "opqrstSeverity",
+      value: "7",
+    });
+    state = apply(state, {
+      type: "edit",
+      slot: "opqrstTimePattern",
+      value: "continuous",
+    });
+    expect(viewFacts(state).gate.nextEnabled).toBe(false);
+
+    state = apply(state, {
+      type: "edit",
+      slot: "timeAmount",
+      value: "30",
+    });
+    state = apply(state, {
+      type: "edit",
+      slot: "timeUnit",
+      value: "minutes",
+    });
+    expect(viewFacts(state).gate.nextEnabled).toBe(true);
+    expect(viewFacts(state).screen).toMatchObject({
+      step: "chest_opqrst",
+      onsetId: "sudden",
+      qualityId: "pressure",
+      severity: 7,
+      timePattern: "continuous",
+      timeAmount: 30,
+      timeUnit: "minutes",
+    });
+    expect(state.answers.chief_complaint_duration?.detail).toMatchObject({
+      timePattern: "continuous",
+      timeAmount: 30,
+      timeUnit: "minutes",
+    });
+
+    state = apply(state, { type: "nav", move: "next" });
+    expect(state.currentStep).toBe("before");
+
+    state = apply(state, { type: "nav", move: "back" });
+    expect(state.currentStep).toBe("chest_opqrst");
+  });
+
+  it("allows OPQRST unknown/skip and time-unknown to satisfy T", () => {
+    let state = createCase();
+    state = apply(state, {
+      type: "edit",
+      slot: "secondLanguage",
+      value: "en",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, { type: "edit", slot: "informant", value: "self" });
+    state = apply(state, {
+      type: "edit",
+      slot: "sceneType",
+      value: "non_trauma",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+    state = apply(state, {
+      type: "edit",
+      slot: "complaintType",
+      value: "chest_pain",
+    });
+    state = apply(state, { type: "nav", move: "next" });
+
+    let unknown = apply(state, { type: "nav", move: "unknown" });
+    expect(unknown.answers.chest_opqrst?.status).toBe("unknown");
+    unknown = apply(unknown, { type: "nav", move: "next" });
+    expect(unknown.currentStep).toBe("before");
+
+    let skipped = apply(state, { type: "nav", move: "skip" });
+    expect(skipped.answers.chest_opqrst?.status).toBe("skipped");
+    skipped = apply(skipped, { type: "nav", move: "next" });
+    expect(skipped.currentStep).toBe("before");
+
+    state = apply(state, {
+      type: "edit",
+      slot: "opqrstOnset",
+      value: "gradual",
+    });
+    state = apply(state, {
+      type: "edit",
+      slot: "opqrstQuality",
+      value: "stabbing",
+    });
+    state = apply(state, {
+      type: "edit",
+      slot: "opqrstSeverity",
+      value: "0",
+    });
+    state = apply(state, {
+      type: "edit",
+      slot: "opqrstTimePattern",
+      value: "intermittent",
+    });
+    state = apply(state, { type: "edit", slot: "opqrstTimeUnknown" });
+    expect(viewFacts(state).screen).toMatchObject({ timeUnknown: true });
+    expect(viewFacts(state).gate.nextEnabled).toBe(true);
+    state = apply(state, { type: "nav", move: "next" });
+    expect(state.currentStep).toBe("before");
+  });
 });

@@ -4,11 +4,17 @@
 
 **Blocked by:** 02 — 非創傷主要原因（扁平目錄）
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 選胸悶／胸痛後進入 OPQRST 步驟（glossary 可記 OPQRST chest page）
-- [ ] O／P／Q／R／S／T 行為符合共識；P／R 可空
-- [ ] S：整數 0–10；UI 事實含色尺／表情對照與出處註記
-- [ ] T 滿足時 duration 答案已寫入；導覽跳過 `chief_complaint_duration`
-- [ ] 軟 Gate：缺 O／Q／S／T 時 Next 關閉；unknown／skip／back 仍可用
-- [ ] CaseSession 測試覆蓋閘門、duration 帶入、跳過多久頁
+- [x] 選胸悶／胸痛後進入 OPQRST 步驟（glossary 可記 OPQRST chest page）
+- [x] O／P／Q／R／S／T 行為符合共識；P／R 可空
+- [x] S：整數 0–10；UI 事實含色尺／表情對照與出處註記
+- [x] T 滿足時 duration 答案已寫入；導覽跳過 `chief_complaint_duration`
+- [x] 軟 Gate：缺 O／Q／S／T 時 Next 關閉；unknown／skip／back 仍可用
+- [x] CaseSession 測試覆蓋閘門、duration 帶入、跳過多久頁
+
+## Answer
+
+- Step `chest_opqrst` after non-trauma `chest_pain`; catalog `src/catalog/chest-opqrst.ts`; module `src/case-session/chest-opqrst.ts`.
+- Soft gate `need_opqrst` (O／Q／S／T); P／R optional. T syncs into `chief_complaint_duration`; complete → `before` (skips quality + duration).
+- UI: color bar + face reference on 0–10, source note/URL; Vitest 52 passed.

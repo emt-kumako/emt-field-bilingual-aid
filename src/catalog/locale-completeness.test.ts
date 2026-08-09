@@ -23,6 +23,17 @@ import {
   TRAUMA_VEHICLE_OPTIONS,
 } from "./trauma-primary.js";
 import {
+  OPQRST_ONSET,
+  OPQRST_PROVOCATION,
+  OPQRST_QUALITY,
+  OPQRST_RADIATION_SITES,
+  OPQRST_RADIATION_TOGGLE_LABELS,
+  OPQRST_REGIONS,
+  OPQRST_TIME_PATTERN,
+  OPQRST_TIME_UNKNOWN_LABELS,
+  PAIN_SCALE_SOURCE_NOTE,
+} from "./chest-opqrst.js";
+import {
   INFORMANT_OPTIONS,
   SCENE_TYPE_OPTIONS,
 } from "../content/start-labels.js";
@@ -89,6 +100,27 @@ describe("locale packs", () => {
     for (const opt of TRAUMA_INJURY_OPTIONS) {
       assertComplete(opt.labels, `traumaInjury:${opt.id}`);
     }
+    for (const opt of OPQRST_ONSET) {
+      assertComplete(opt.labels, `opqrstOnset:${opt.id}`);
+    }
+    for (const opt of OPQRST_PROVOCATION) {
+      assertComplete(opt.labels, `opqrstProvocation:${opt.id}`);
+    }
+    for (const opt of OPQRST_QUALITY) {
+      assertComplete(opt.labels, `opqrstQuality:${opt.id}`);
+    }
+    for (const opt of OPQRST_REGIONS) {
+      assertComplete(opt.labels, `opqrstRegion:${opt.id}`);
+    }
+    for (const opt of OPQRST_RADIATION_SITES) {
+      assertComplete(opt.labels, `opqrstRadiation:${opt.id}`);
+    }
+    for (const opt of OPQRST_TIME_PATTERN) {
+      assertComplete(opt.labels, `opqrstTimePattern:${opt.id}`);
+    }
+    assertComplete(OPQRST_TIME_UNKNOWN_LABELS, "opqrst:timeUnknown");
+    assertComplete(OPQRST_RADIATION_TOGGLE_LABELS, "opqrst:radiationToggle");
+    assertComplete(PAIN_SCALE_SOURCE_NOTE, "opqrst:painScaleSource");
   });
 
   it("fails loudly when a second-language string is missing", () => {

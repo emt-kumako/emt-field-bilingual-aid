@@ -30,6 +30,7 @@ export type GateReason =
   | "need_body_location"
   | "need_quality_or_pain"
   | "need_duration"
+  | "need_opqrst"
   | "need_list_selection"
   | "need_other_symptom_or_body";
 
@@ -37,6 +38,7 @@ export type GateReason =
 export type InterviewStep =
   | "start"
   | "chief_complaint_1"
+  | "chest_opqrst"
   | "chief_complaint_quality"
   | "chief_complaint_duration"
   | "before"
@@ -108,6 +110,8 @@ export function emptyChiefComplaintQualityDetail(): ChiefComplaintQualityDetail 
   };
 }
 
+export type DurationTimePattern = "intermittent" | "continuous";
+
 /** 主訴「多久了」payload in answers.chief_complaint_duration.detail */
 export type ChiefComplaintDurationDetail = {
   timeMode: "duration" | "period" | null;
@@ -115,6 +119,10 @@ export type ChiefComplaintDurationDetail = {
   timeAmount: number | null;
   timeUnit: "minutes" | "hours" | "days" | null;
   timeRefine: string;
+  /** From OPQRST T / optional on duration. */
+  timePattern: DurationTimePattern | null;
+  /** 時間不詳 — satisfies duration when set with a pattern from OPQRST. */
+  timeUnknown: boolean;
 };
 
 export function emptyChiefComplaintDurationDetail(): ChiefComplaintDurationDetail {
@@ -124,6 +132,34 @@ export function emptyChiefComplaintDurationDetail(): ChiefComplaintDurationDetai
     timeAmount: null,
     timeUnit: null,
     timeRefine: "",
+    timePattern: null,
+    timeUnknown: false,
+  };
+}
+
+/** Non-trauma chest pain／tightness OPQRST page. */
+export type ChestOpqrstDetail = {
+  onsetId: string | null;
+  provocationIds: string[];
+  qualityId: string | null;
+  regionIds: string[];
+  radiation: boolean;
+  radiationSiteIds: string[];
+  /** 0–10 inclusive. */
+  severity: number | null;
+  timePattern: DurationTimePattern | null;
+};
+
+export function emptyChestOpqrstDetail(): ChestOpqrstDetail {
+  return {
+    onsetId: null,
+    provocationIds: [],
+    qualityId: null,
+    regionIds: [],
+    radiation: false,
+    radiationSiteIds: [],
+    severity: null,
+    timePattern: null,
   };
 }
 
@@ -147,6 +183,7 @@ export function emptyOtherSymptomsDetail(): OtherSymptomsDetail {
 /** Steps cleared when Scene type changes (primary／secondary path). */
 export const SCENE_TYPE_DEPENDENT_STEPS: InterviewStep[] = [
   "chief_complaint_1",
+  "chest_opqrst",
   "chief_complaint_quality",
   "chief_complaint_duration",
   "other_symptoms",
