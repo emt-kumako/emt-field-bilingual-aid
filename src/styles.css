@@ -269,26 +269,40 @@ h1 {
   grid-template-columns: repeat(6, 1fr);
 }
 
-.pain-scale-bar {
-  height: 0.55rem;
-  border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    #2ecc71 0%,
-    #f1c40f 45%,
-    #e67e22 70%,
-    #e74c3c 100%
-  );
-  margin: 0.2rem 0 0.5rem;
+.pain-scale-block {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.15rem 0 0.35rem;
+  min-width: 0;
 }
 
-.pain-face-ref {
+.pain-face-row,
+.pain-score-row {
+  display: grid;
+  grid-template-columns: repeat(var(--pain-cols, 11), minmax(0, 1fr));
+  gap: 0.18rem;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.pain-face {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem 0.85rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.1rem;
+  text-align: center;
+  font-size: clamp(1.05rem, 2.8vw, 1.45rem);
+  line-height: 1.1;
+  color: var(--ink);
+  min-width: 0;
+}
+
+.pain-face small {
+  font-size: 0.68rem;
+  font-weight: 650;
   color: var(--muted);
-  font-size: 0.88rem;
-  margin: 0 0 0.45rem;
+  letter-spacing: 0;
 }
 
 .source-note {
@@ -658,28 +672,37 @@ button.ghost {
   grid-template-columns: 1fr;
 }
 
-.pain-scale {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.35rem;
-}
-
 .pain-score {
   appearance: none;
-  border: 2px solid var(--line);
-  background: var(--surface);
-  color: var(--ink);
-  border-radius: var(--radius);
-  min-height: clamp(2.4rem, 5.5vh, 3.4rem);
+  border: 2px solid rgba(0, 0, 0, 0.18);
+  background: var(--pain-bg, var(--surface));
+  color: var(--pain-fg, var(--ink));
+  border-radius: 0.4rem;
+  min-height: clamp(2.55rem, 6vh, 3.5rem);
+  min-width: 0;
+  padding: 0.2rem 0.1rem;
   font: inherit;
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: clamp(0.85rem, 2.6vw, 1.15rem);
+  font-weight: 800;
   cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 
 .pain-score[aria-pressed="true"] {
-  border-color: var(--accent);
-  background: var(--selected);
+  border-color: var(--ink);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.25),
+    0 0 0 2px var(--accent);
+  transform: translateY(-1px);
+}
+
+.opqrst-time-entry {
+  display: grid;
+  grid-template-columns: auto minmax(5.5rem, 7.5rem) 1fr;
+  gap: 0.55rem;
+  align-items: stretch;
+  margin: 0.55rem 0;
+  min-width: 0;
 }
 
 .step-nav {
@@ -735,16 +758,17 @@ button.ghost {
   border: 2px solid var(--line);
   background: var(--surface);
   border-radius: var(--radius);
-  padding: 0.6rem 0.7rem;
+  padding: 0.7rem 0.8rem;
   text-align: left;
   font: inherit;
   cursor: pointer;
   display: grid;
-  grid-template-columns: 4.25rem 1fr auto;
-  gap: 0.5rem;
+  grid-template-columns: minmax(5rem, 7.5rem) minmax(0, 1fr) auto;
+  gap: 0.55rem 0.85rem;
   align-items: start;
-  min-height: 3.1rem;
+  min-height: 3.25rem;
   height: auto;
+  min-width: 0;
 }
 
 .summary-row.is-missing {
@@ -756,6 +780,8 @@ button.ghost {
   font-weight: 700;
   color: var(--accent);
   font-size: 0.92rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .summary-label .zh,
@@ -771,19 +797,26 @@ button.ghost {
   font-weight: 500;
   color: var(--muted);
   font-size: 0.82em;
+  line-height: 1.35;
+  margin-top: 0.12rem;
 }
 
 .summary-value {
   color: var(--ink);
-  line-height: 1.35;
+  line-height: 1.45;
   font-size: 0.92rem;
+  min-width: 0;
   overflow-wrap: anywhere;
-  word-break: normal;
+  word-break: break-word;
 }
 
 .summary-edit {
   color: var(--muted);
   font-size: 0.85rem;
+  white-space: nowrap;
+  justify-self: end;
+  align-self: start;
+  padding-top: 0.1rem;
 }
 
 .copy-status {
@@ -791,6 +824,36 @@ button.ghost {
   color: var(--accent);
   font-weight: 650;
   font-size: 0.9rem;
+}
+
+/* Tablet + phone: summary stacks so bilingual lines do not collide. */
+@media (max-width: 1023.98px) {
+  .summary-list {
+    gap: 0.7rem;
+  }
+
+  .summary-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "label edit"
+      "value value";
+    gap: 0.4rem 0.75rem;
+    padding: 0.75rem 0.85rem;
+  }
+
+  .summary-label {
+    grid-area: label;
+  }
+
+  .summary-value {
+    grid-area: value;
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .summary-edit {
+    grid-area: edit;
+  }
 }
 
 /* Phone density tweaks (scroll unlock is global). */
@@ -914,15 +977,29 @@ button.ghost {
 
   .summary-list {
     grid-auto-rows: auto;
-    gap: 0.5rem;
   }
 
-  .summary-row {
-    height: auto;
-    min-height: 3.1rem;
-    grid-template-columns: 3.4rem 1fr auto;
-    padding: 0.6rem 0.7rem;
-    align-items: start;
+  .pain-face small {
+    font-size: 0.62rem;
+  }
+
+  .opqrst-time-entry {
+    grid-template-columns: auto minmax(4.8rem, 1fr);
+    grid-template-areas:
+      "prefix amount"
+      "units units";
+  }
+
+  .opqrst-time-entry .duration-prefix {
+    grid-area: prefix;
+  }
+
+  .opqrst-time-entry .duration-amount {
+    grid-area: amount;
+  }
+
+  .opqrst-time-entry .unit-grid {
+    grid-area: units;
   }
 
   .site-footer {

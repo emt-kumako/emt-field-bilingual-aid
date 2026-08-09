@@ -67,6 +67,88 @@ import {
 const INTERVIEW_PRIMACY: BilingualPrimacy = "second";
 const SUMMARY_PRIMACY: BilingualPrimacy = "second";
 
+/** Pain Assessment Tool palette (green → yellow → red), scores 0–10. */
+const PAIN_SCORE_COLORS = [
+  "#146933",
+  "#3d9a4a",
+  "#7cb342",
+  "#c6d931",
+  "#ffd800",
+  "#ffc107",
+  "#ff9800",
+  "#f57c00",
+  "#e65100",
+  "#d84315",
+  "#d71920",
+] as const;
+
+function painScoreTextColor(score: number): string {
+  return score <= 3 ? "#ffffff" : "#1a1a1a";
+}
+
+/** Face bands aligned to score columns (Wong-Baker-style reference). */
+function painFaceRowHtml(minScore: 0 | 1): string {
+  const cols = minScore === 0 ? 11 : 10;
+  const band = (start: number, end: number, face: string, label: string) => {
+    const colStart = start - minScore + 1;
+    const colEnd = end - minScore + 2;
+    return `<span class="pain-face" style="grid-column:${colStart} / ${colEnd}">${face}<small>${label}</small></span>`;
+  };
+  const faces =
+    minScore === 0
+      ? [
+          band(0, 0, "😀", "0"),
+          band(1, 3, "🙂", "1–3"),
+          band(4, 6, "😐", "4–6"),
+          band(7, 9, "😣", "7–9"),
+          band(10, 10, "😭", "10"),
+        ].join("")
+      : [
+          band(1, 3, "🙂", "1–3"),
+          band(4, 6, "😐", "4–6"),
+          band(7, 9, "😣", "7–9"),
+          band(10, 10, "😭", "10"),
+        ].join("");
+  return `<div class="pain-face-row" style="--pain-cols:${cols}" aria-hidden="true">${faces}</div>`;
+}
+
+function painScoreRowHtml(
+  minScore: 0 | 1,
+  selected: number | null,
+  action: "opqrst-severity" | "ccq-pain",
+): string {
+  const max = 10;
+  const buttons = Array.from({ length: max - minScore + 1 }, (_, i) => {
+    const score = minScore + i;
+    const pressed = selected === score;
+    const bg = PAIN_SCORE_COLORS[score] ?? "#ccc";
+    const fg = painScoreTextColor(score);
+    return `
+      <button
+        type="button"
+        class="pain-score"
+        data-action="${action}"
+        data-id="${score}"
+        aria-pressed="${pressed}"
+        style="--pain-bg:${bg};--pain-fg:${fg}"
+      >${score}</button>`;
+  }).join("");
+  const cols = max - minScore + 1;
+  return `<div class="pain-score-row" style="--pain-cols:${cols}">${buttons}</div>`;
+}
+
+function painScaleBlockHtml(
+  minScore: 0 | 1,
+  selected: number | null,
+  action: "opqrst-severity" | "ccq-pain",
+): string {
+  return `
+    <div class="pain-scale-block">
+      ${painFaceRowHtml(minScore)}
+      ${painScoreRowHtml(minScore, selected, action)}
+    </div>`;
+}
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     const swUrl = `${import.meta.env.BASE_URL}sw.js`;
@@ -672,18 +754,10 @@ function renderChestOpqrst(): void {
     secondLang(),
     INTERVIEW_PRIMACY,
   );
-  const severityButtons = Array.from({ length: 11 }, (_, score) => {
-    const pressed = screen.severity === score;
-    return `
-      <button type="button" class="option pain-score" data-action="opqrst-severity" data-id="${score}" aria-pressed="${pressed}">
-        ${score}
-      </button>`;
-  }).join("");
-
   const unitButtons = TIME_UNITS.map((u) => {
     const pressed = screen.timeUnit === u.id;
     return `
-      <button type="button" class="option" data-action="ccd-time-unit" data-id="${u.id}" aria-pressed="${pressed}">
+      <button type="button" class="option unit-chip" data-action="ccd-time-unit" data-id="${u.id}" aria-pressed="${pressed}">
         ${bilingualButtonLabel(u.labels)}
       </button>`;
   }).join("");
@@ -724,11 +798,7 @@ function renderChestOpqrst(): void {
       </section>
       <section class="section">
         <h2>S · 0–10</h2>
-        <div class="pain-scale-bar" aria-hidden="true"></div>
-        <div class="pain-face-ref" aria-hidden="true">
-          <span>😀 0</span><span>🙂 1–3</span><span>😐 4–6</span><span>😣 7–9</span><span>😭 10</span>
-        </div>
-        <div class="option-grid cols-6">${severityButtons}</div>
+        ${painScaleBlockHtml(0, screen.severity, "opqrst-severity")}
         <p class="source-note">${escapeHtml(sourceNote.primary)} · ${escapeHtml(sourceNote.secondary)}
           <a href="${PAIN_SCALE_SOURCE_URL}" target="_blank" rel="noopener noreferrer">medicalxpress.com</a>
         </p>
@@ -736,13 +806,23 @@ function renderChestOpqrst(): void {
       <section class="section">
         <h2>T</h2>
         <div class="option-grid cols-2">${optionButtons(OPQRST_TIME_PATTERN, "opqrst-time-pattern", screen.timePattern)}</div>
-        <label class="field">
-          <span class="field-label">約</span>
-          <input type="number" min="1" inputmode="numeric" data-action="ccd-time-amount" value="${
-            screen.timeAmount ?? ""
-          }" ${screen.timeUnknown ? "disabled" : ""} />
-        </label>
-        <div class="option-grid cols-3">${unitButtons}</div>
+        <div class="opqrst-time-entry">
+          <span class="duration-prefix">
+            <span class="zh">約</span>
+            <span class="sub">About</span>
+          </span>
+          <input
+            class="duration-amount"
+            type="number"
+            min="1"
+            inputmode="numeric"
+            placeholder="＿＿"
+            data-action="ccd-time-amount"
+            value="${screen.timeAmount ?? ""}"
+            ${screen.timeUnknown ? "disabled" : ""}
+          />
+          <div class="option-grid cols-3 unit-grid">${unitButtons}</div>
+        </div>
         <button type="button" class="option" data-action="opqrst-time-unknown" aria-pressed="${screen.timeUnknown}">
           ${bilingualButtonLabel(OPQRST_TIME_UNKNOWN_LABELS)}
         </button>
@@ -1001,23 +1081,6 @@ function renderChiefComplaintQuality(): void {
     })
     .join("");
 
-  const painButtons = pain
-    ? Array.from({ length: 10 }, (_, i) => i + 1)
-        .map((n) => {
-          const pressed = screen.painScore === n;
-          return `
-            <button
-              type="button"
-              class="pain-score"
-              data-action="ccq-pain"
-              data-id="${n}"
-              aria-pressed="${pressed}"
-            >${n}</button>
-          `;
-        })
-        .join("")
-    : "";
-
   const statusNote = answerStatusNote(screen.answerStatus);
 
   const title = bilingualHeading(UI_COPY.ccQualityTitle);
@@ -1041,7 +1104,7 @@ function renderChiefComplaintQuality(): void {
         pain
           ? `<section class="section compact">
         <h2>${painTitle}</h2>
-        <div class="pain-scale">${painButtons}</div>
+        ${painScaleBlockHtml(1, screen.painScore, "ccq-pain")}
       </section>`
           : ""
       }

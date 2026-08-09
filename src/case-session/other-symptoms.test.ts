@@ -78,4 +78,25 @@ describe("secondary reasons (other_symptoms)", () => {
     skipped = completeOtherSymptoms(skipped);
     expect(skipped.currentStep).toBe("summary");
   });
+
+  it("treats secondary「無」as exclusive of other reasons", () => {
+    let trauma = atOtherSymptoms("trauma");
+    trauma = toggleSecondaryReason(trauma, "pain");
+    trauma = toggleSecondaryReason(trauma, "weakness");
+    expect(getOtherSymptomsDetail(trauma).reasonIds).toEqual([
+      "pain",
+      "weakness",
+    ]);
+    trauma = toggleSecondaryReason(trauma, "none");
+    expect(getOtherSymptomsDetail(trauma).reasonIds).toEqual(["none"]);
+    trauma = toggleSecondaryReason(trauma, "bleeding");
+    expect(getOtherSymptomsDetail(trauma).reasonIds).toEqual(["bleeding"]);
+
+    let nonTrauma = atOtherSymptoms("non_trauma");
+    nonTrauma = toggleSecondaryReason(nonTrauma, "none");
+    expect(getOtherSymptomsDetail(nonTrauma).reasonIds).toEqual(["none"]);
+    expect(canCompleteOtherSymptoms(nonTrauma)).toBe(true);
+    nonTrauma = completeOtherSymptoms(nonTrauma);
+    expect(nonTrauma.currentStep).toBe("summary");
+  });
 });

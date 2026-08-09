@@ -17,6 +17,7 @@ import { UI_COPY } from "./ui-copy.js";
 import { NON_TRAUMA_PRIMARY_REASONS } from "./non-trauma-primary.js";
 import {
   NON_TRAUMA_SECONDARY_REASONS,
+  TRAUMA_SECONDARY_REASONS,
 } from "./secondary-reason.js";
 import {
   TRAUMA_INJURY_OPTIONS,
@@ -24,7 +25,6 @@ import {
   TRAUMA_TRAFFIC_OPTIONS,
   TRAUMA_VEHICLE_OPTIONS,
 } from "./trauma-primary.js";
-import { TRAUMA_SECONDARY_SENSATIONS } from "./trauma-secondary.js";
 import {
   OPQRST_ONSET,
   OPQRST_PROVOCATION,
@@ -78,7 +78,7 @@ describe("locale packs", () => {
     for (const s of NON_TRAUMA_SECONDARY_REASONS) {
       assertComplete(s.labels, `nonTraumaSecondary:${s.id}`);
     }
-    for (const s of TRAUMA_SECONDARY_SENSATIONS) {
+    for (const s of TRAUMA_SECONDARY_REASONS) {
       assertComplete(s.labels, `traumaSecondary:${s.id}`);
     }
     for (const [key, text] of Object.entries(UI_COPY)) {
